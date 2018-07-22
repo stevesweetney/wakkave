@@ -3,6 +3,24 @@ name = "wakkave"
 version = "0.1.0"
 authors = ["Steve Sweetney <stevesweetney@gmail.com>"]
 
+[[bin]]
+name = "backend"
+path = "src/backend/main.rs"
+required-features = ["default"]
+[[bin]]
+name = "frontend"
+path = "src/frontend/main.rs"
+required-features = ["frontend"]
+
 [dependencies]
-actix = "^0.5.8"
-actix-web = "0.6"
+actix = {version = "^0.5.8", optional = true}
+actix-web = {version = "0.6", optional = true}
+yew = { git = "https://github.com/DenisKolodin/yew", optional = true }
+
+[features]
+default = [
+    "actix", "actix-web",
+]
+frontend = [
+    "yew"
+]
