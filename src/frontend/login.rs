@@ -1,14 +1,37 @@
 use yew::prelude::*;
+use yew::services::websocket::{WebSocketService, WebSocketTask};
+use yew::format;
 
 pub struct Login { 
     username: String,
     password: String,
+    websocket_service: WebSocketService,
+    ws: WebSocketTask
 }
 
 pub enum Msg {
     UpdateUsername(String),
     UpdatePassword(String),
     LoginRequest,
+    LoginResponse(WsResponse),
+    Ignore,
+}
+
+pub enum WsResponse {
+    Text(format::Text),
+    Binary(format::Binary),
+}
+
+impl From<format::Text> for WsResponse {
+    fn from(text: format::Text) -> Self {
+        WsResponse::Text(text)
+    }
+}
+
+impl From<format::Binary> for WsResponse {
+    fn from(binary: format::Binary) -> Self {
+        WsResponse::Binary(binary)
+    }
 }
 
 impl Component for Login {
@@ -16,7 +39,17 @@ impl Component for Login {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Login { username: String::new(), password: String::new() }
+        let mut ws_service = WebSocketService::new();
+        let callback = link.send_back(|data| Msg::LoginResponse(data));
+        let notification = link.send_back(|_| Msg::Ignore);
+
+        let ws_task = ws_service.connect("ws://127.0.0.1:8088", callback, notification);
+        Login { 
+            username: String::new(), 
+            password: String::new(),
+            websocket_service: ws_service,
+            ws: ws_task,  
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -27,7 +60,9 @@ impl Component for Login {
             Msg::UpdatePassword(password) => {
                 self.password = password;
             },
-            Msg::LoginRequest => (),
+            Msg::LoginRequest => self.ws.send(Ok("Login".to_string())),
+            Msg::LoginResponse(res) => (),
+            Msg::Ignore => return false,
         }
         true
     }
