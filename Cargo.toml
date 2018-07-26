@@ -12,9 +12,13 @@ name = "frontend"
 path = "src/frontend/main.rs"
 required-features = ["frontend"]
 
+[build-dependencies]
+capnpc = "0.8.9"
+
 [dependencies]
 actix = {version = "^0.5.8", optional = true}
 actix-web = {version = "0.6", optional = true}
+capnp = "0.8.17"
 yew = { git = "https://github.com/DenisKolodin/yew", optional = true }
 
 [features]
