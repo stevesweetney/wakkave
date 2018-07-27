@@ -2,11 +2,19 @@ use std::error;
 use time;
 use uuid::Uuid;
 use jsonwebtoken::{self, Header, Validation };
-
-type Result<T> = ::std::result::Result<T, Box<error::Error>>;
+use failure::Error;
 
 lazy_static! {
     static ref SECRET: String = Uuid::new_v4().to_string();
+}
+
+#[derive(Debug, Fail)]
+enum ServerError {
+    #[fail(display = "unable to create token")]
+    CreateToken,
+
+   #[fail(display = "Invalid Token")]
+    VerifyToken, 
 }
 
 /// A web token
@@ -23,7 +31,7 @@ struct Token {
 }
 
 impl Token {
-    fn create(username: &str) -> Result<String> {
+    fn create(username: &str) -> Result<String, Error> {
         const TOKEN_LIFETIME: i64 = 3600;
         let claims = Token {
             sub: username.to_owned(),
@@ -32,16 +40,15 @@ impl Token {
             jti: Uuid::new_v4().to_string(),
         };
 
-        let jwt = jsonwebtoken::encode(&Header::default(), &claims, SECRET.as_ref());
-
-        unimplemented!()
+        jsonwebtoken::encode(&Header::default(), &claims, SECRET.as_ref())
+            .map_err(|_| Error::from(ServerError::CreateToken))
     }
 
-    fn verify(token: &str) -> Result<String> {
+    fn verify(token: &str) -> Result<String, Error> {
         let data = jsonwebtoken::decode::<Token>(
             token, 
             SECRET.as_ref(), 
-            &Validation::default());
-        unimplemented!()
+            &Validation::default()).map_err(|_| Error::from(ServerError::VerifyToken))?;
+        Self::create(&data.claims.sub)
     }
 }

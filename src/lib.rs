@@ -2,6 +2,9 @@ extern crate capnp;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate failure;
+
 #[cfg(feature = "frontend")]
 #[macro_use]
 extern crate yew;
