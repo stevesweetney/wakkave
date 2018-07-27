@@ -1,12 +1,19 @@
 use yew::prelude::*;
-use yew::services::websocket::{WebSocketService, WebSocketTask};
+use yew::services::{
+    websocket::{WebSocketService, WebSocketTask},
+    ConsoleService,
+};
 use yew::format;
+
+use frontend::services::protocol::ProtocolService;
 
 pub struct Login { 
     username: String,
     password: String,
     websocket_service: WebSocketService,
-    ws: WebSocketTask
+    ws: WebSocketTask,
+    protocol_service: ProtocolService,
+    console_service: ConsoleService,
 }
 
 pub enum Msg {
@@ -48,7 +55,9 @@ impl Component for Login {
             username: String::new(), 
             password: String::new(),
             websocket_service: ws_service,
-            ws: ws_task,  
+            ws: ws_task,
+            protocol_service: ProtocolService::new(),
+            console_service: ConsoleService::new(),  
         }
     }
 
@@ -60,8 +69,25 @@ impl Component for Login {
             Msg::UpdatePassword(password) => {
                 self.password = password;
             },
-            Msg::LoginRequest => self.ws.send(Ok("Login".to_string())),
-            Msg::LoginResponse(res) => (),
+            Msg::LoginRequest => match self
+                .protocol_service
+                .write_request_login_credentials(&self.username, &self.password) {
+                    Ok(data) => {
+                        self.ws.send_binary(Ok(data.to_owned()));
+                    }
+                    Err(e) => (),
+                }
+            Msg::LoginResponse(res) => {
+                if let WsResponse::Binary(bin) = res {
+                    if let Ok(bytes) = bin {
+                        if let Ok(resp) = self.protocol_service.read_response_login(bytes) {
+                            if let Some(token) = resp {
+                                self.console_service.log(&token)
+                            }
+                        }
+                    }
+                }
+            },
             Msg::Ignore => return false,
         }
         true

@@ -13,3 +13,17 @@ struct Request {
         logout @3 :Text; # Session token
     }
 }
+
+struct Response {
+    union {
+        login :union {
+            token @0 :Text;
+            error @1 :Text;
+        }
+
+        logout :union {
+            success @2 :Void;
+            error @3 :Text;
+        }
+    }
+}

@@ -1,7 +1,24 @@
 use actix::prelude::*;
-use actix_web::ws::{ Message, ProtocolError, WebsocketContext };
+use actix_web::{
+    ws::{ Message, ProtocolError, WebsocketContext },
+    Binary,
+};
 
-pub struct Ws;
+use capnp::{
+    message::{ Builder, HeapAllocator, ReaderOptions },
+    serialize_packed
+};
+
+use protocol_capnp::{request, response};
+
+use std::error;
+
+type Result<T> = ::std::result::Result<T, Box<error::Error>>;
+
+pub struct Ws {
+    data: Vec<u8>,
+    builder: Builder<HeapAllocator>,
+}
 
 impl Actor for Ws {
     type Context = WebsocketContext<Self>;
@@ -11,8 +28,11 @@ impl StreamHandler<Message, ProtocolError> for Ws {
     fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {
         match msg {
             Message::Text(text) => {
-                self.handle_request(&text, ctx);
+                ctx.text(text);
             },
+            Message::Binary(bin) => {
+                self.handle_request(bin, ctx);
+            }
             Message::Close(reason) => {
                 ctx.stop();
             },
@@ -22,11 +42,64 @@ impl StreamHandler<Message, ProtocolError> for Ws {
 }
 
 impl Ws {
-    fn handle_request(&self, text: &str, ctx: &mut WebsocketContext<Self>) {
-        match text {
-            "Login" => ctx.text("You have sucessfully logged in!"),
-            "Logout" => ctx.text("You have sucessfully logged out"),
-            _ => (),
+    pub fn new() -> Self {
+        Ws {
+            data: Vec::new(),
+            builder: Builder::new_default(),
         }
+    }
+
+    fn handle_request(&mut self, data: Binary, ctx: &mut WebsocketContext<Self>) {
+        let reader = serialize_packed::read_message(&mut data.as_ref(), ReaderOptions::new())
+            .expect("Error reading message");
+
+        let request = reader.get_root::<request::Reader>()
+            .expect("Error getting message root");
+
+        match request.which() {
+            Ok(request::Login(data)) => {
+                match data.which() {
+                    Ok(request::login::Credentials(data)) => {
+                        if let Err(e) = self.handle_request_login_credentials(data) {
+                            println!("Error: {:?}", e);
+                        }
+
+                        self.send(ctx);
+                    }
+                    Ok(request::login::Token(data)) => {
+                        println!("{}", data.unwrap());
+                    }
+                    Err(::capnp::NotInSchema(_)) => (),
+                }
+            }
+            Ok(request::Logout(data)) => {
+
+            }
+            Err(::capnp::NotInSchema(_)) => (),
+        }
+    }
+
+    fn write(&mut self) -> Result<()> {
+        self.data.clear();
+
+        serialize_packed::write_message(&mut self.data, &self.builder)?;
+        Ok(())
+    }
+
+    fn send(&self, ctx: &mut WebsocketContext<Self>) {
+        ctx.binary(self.data.clone());
+    }
+
+    fn handle_request_login_credentials(&mut self, data: request::login::credentials::Reader) -> Result<()> {
+        let name = data.get_username()?;
+        let password = data.get_password()?;
+        println!("Name: {} \nPassword: {}", name, password);
+
+        self.builder
+            .init_root::<response::Builder>()
+            .init_login()
+            .set_token("Login Token!");
+
+        self.write()
     }
 }
