@@ -1,4 +1,6 @@
 extern crate capnp;
+#[macro_use]
+extern crate lazy_static;
 
 #[cfg(feature = "frontend")]
 #[macro_use]
@@ -9,6 +11,22 @@ extern crate actix;
 
 #[cfg(feature="default")]
 extern crate actix_web;
+
+#[cfg(feature="default")]
+extern crate jsonwebtoken;
+
+#[cfg(feature="default")]
+extern crate uuid;
+
+#[cfg(feature="default")]
+extern crate time;
+
+#[cfg(feature="default")]
+extern crate serde;
+
+#[cfg(feature="default")]
+#[macro_use]
+extern crate serde_derive;
 
 #[cfg(feature="default")]
 pub mod backend;

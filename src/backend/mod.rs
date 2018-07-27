@@ -1,3 +1,5 @@
+pub mod token;
+
 use actix::prelude::*;
 use actix_web::{
     ws::{ Message, ProtocolError, WebsocketContext },

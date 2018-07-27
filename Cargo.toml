@@ -20,10 +20,20 @@ actix = {version = "^0.5.8", optional = true}
 actix-web = {version = "0.6", optional = true}
 capnp = "0.8.17"
 yew = { git = "https://github.com/DenisKolodin/yew", optional = true }
+jsonwebtoken = { version = "4", optional = true }
+serde_derive = { version = "1", optional = true }
+serde = { version = "1", optional = true }
+uuid = { version = "0.6", features = ["v4"], optional = true }
+time = { version = "0.1.40", optional = true }
+lazy_static = "1.0.2"
 
 [features]
 default = [
     "actix", "actix-web",
+    "serde", "serde_derive",
+    "jsonwebtoken",
+    "uuid",
+    "time",
 ]
 frontend = [
     "yew"
