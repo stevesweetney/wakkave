@@ -75,12 +75,12 @@ impl Component for Login {
                     Ok(data) => {
                         self.ws.send_binary(Ok(data.to_owned()));
                     }
-                    Err(e) => (),
+                    Err(_e) => (),
                 }
             Msg::LoginResponse(res) => {
                 if let WsResponse::Binary(bin) = res {
                     if let Ok(bytes) = bin {
-                        if let Ok(resp) = self.protocol_service.read_response_login(bytes) {
+                        if let Ok(resp) = self.protocol_service.read_response_login(&bytes) {
                             if let Some(token) = resp {
                                 self.console_service.log(&token)
                             }

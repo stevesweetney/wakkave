@@ -61,8 +61,8 @@ impl ProtocolService {
         self.write()
     }
 
-    pub fn read_response_login(&self, data: Vec<u8>) -> Result<Option<String>> {
-        let reader = serialize_packed::read_message(&mut data.as_ref(), ReaderOptions::new())?;
+    pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<String>> {
+        let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
 
         match response.which()? {
