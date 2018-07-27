@@ -11,7 +11,7 @@ use capnp::{
 
 use protocol_capnp::{request, response};
 
-use std::error;
+use std::{error, default::Default};
 
 type Result<T> = ::std::result::Result<T, Box<error::Error>>;
 
@@ -19,6 +19,13 @@ pub struct Ws {
     data: Vec<u8>,
     builder: Builder<HeapAllocator>,
 }
+
+impl Default for Ws {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 
 impl Actor for Ws {
     type Context = WebsocketContext<Self>;
@@ -31,9 +38,9 @@ impl StreamHandler<Message, ProtocolError> for Ws {
                 ctx.text(text);
             },
             Message::Binary(bin) => {
-                self.handle_request(bin, ctx);
+                self.handle_request(&bin, ctx);
             }
-            Message::Close(reason) => {
+            Message::Close(_reason) => {
                 ctx.stop();
             },
             _ => (),
@@ -49,7 +56,7 @@ impl Ws {
         }
     }
 
-    fn handle_request(&mut self, data: Binary, ctx: &mut WebsocketContext<Self>) {
+    fn handle_request(&mut self, data: &Binary, ctx: &mut WebsocketContext<Self>) {
         let reader = serialize_packed::read_message(&mut data.as_ref(), ReaderOptions::new())
             .expect("Error reading message");
 
@@ -72,9 +79,7 @@ impl Ws {
                     Err(::capnp::NotInSchema(_)) => (),
                 }
             }
-            Ok(request::Logout(data)) => {
-
-            }
+            Ok(request::Logout(_data)) => (),
             Err(::capnp::NotInSchema(_)) => (),
         }
     }
