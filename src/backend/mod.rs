@@ -13,9 +13,18 @@ use capnp::{
 
 use protocol_capnp::{request, response};
 
-use std::{error, default::Default};
+use std::default::Default;
 
-type Result<T> = ::std::result::Result<T, Box<error::Error>>;
+use failure::Error;
+
+#[derive(Debug, Fail)]
+enum ServerError {
+    #[fail(display = "unable to create token")]
+    CreateToken,
+
+   #[fail(display = "Invalid Token")]
+    VerifyToken, 
+}
 
 pub struct Ws {
     data: Vec<u8>,
@@ -86,7 +95,7 @@ impl Ws {
         }
     }
 
-    fn write(&mut self) -> Result<()> {
+    fn write(&mut self) -> Result<(), Error> {
         self.data.clear();
 
         serialize_packed::write_message(&mut self.data, &self.builder)?;
@@ -97,7 +106,7 @@ impl Ws {
         ctx.binary(self.data.clone());
     }
 
-    fn handle_request_login_credentials(&mut self, data: request::login::credentials::Reader) -> Result<()> {
+    fn handle_request_login_credentials(&mut self, data: request::login::credentials::Reader) -> Result<(), Error> {
         let name = data.get_username()?;
         let password = data.get_password()?;
         println!("Name: {} \nPassword: {}", name, password);

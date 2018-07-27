@@ -1,20 +1,11 @@
-use std::error;
 use time;
 use uuid::Uuid;
 use jsonwebtoken::{self, Header, Validation };
+use super::ServerError;
 use failure::Error;
 
 lazy_static! {
     static ref SECRET: String = Uuid::new_v4().to_string();
-}
-
-#[derive(Debug, Fail)]
-enum ServerError {
-    #[fail(display = "unable to create token")]
-    CreateToken,
-
-   #[fail(display = "Invalid Token")]
-    VerifyToken, 
 }
 
 /// A web token

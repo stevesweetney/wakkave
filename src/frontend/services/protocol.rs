@@ -4,28 +4,13 @@ use capnp::{
 };
 use protocol_capnp::{request, response};
 
-use std::error;
+use failure::Error;
 
-type Result<T> = ::std::result::Result<T, Box<error::Error>>;
-
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum ProtocolError {
-    Response {
-        description: String,
-    }
+    #[fail(display = "Error response: {}", description)]
+    Response { description: String },
 }
-
-impl ::std::fmt::Display for ProtocolError {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        match self {
-            ProtocolError::Response { description } => {
-                write!(f, "{}", description)
-            }
-        }
-    }
-}
-
-impl error::Error for ProtocolError {}
 
 pub struct ProtocolService {
     data: Vec<u8>,
@@ -40,14 +25,14 @@ impl ProtocolService {
         }
     }
 
-    fn write(&mut self) -> Result<&[u8]> {
+    fn write(&mut self) -> Result<&[u8], Error> {
         self.data.clear();
 
         serialize_packed::write_message(&mut self.data, &self.builder)?;
         Ok(&self.data)
     }
 
-    pub fn write_request_login_credentials(&mut self, name: &str, password: &str) -> Result<&[u8]> {
+    pub fn write_request_login_credentials(&mut self, name: &str, password: &str) -> Result<&[u8], Error> {
         {
             let mut creds = self
                 .builder
@@ -61,14 +46,14 @@ impl ProtocolService {
         self.write()
     }
 
-    pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<String>> {
+    pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<String>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
 
         match response.which()? {
             response::Login(data) => match data.which()? {
                 response::login::Token(token) => Ok(Some(token?.to_owned())),
-                response::login::Error(error) => Err(Box::new(ProtocolError::Response {
+                response::login::Error(error) => Err(Error::from(ProtocolError::Response {
                     description: error?.to_owned()
                 })),
             },
