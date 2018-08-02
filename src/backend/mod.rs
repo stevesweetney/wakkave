@@ -1,4 +1,5 @@
 pub mod token;
+pub mod database;
 
 use actix::prelude::*;
 use actix_web::{
@@ -26,6 +27,9 @@ pub enum ServerError {
 
    #[fail(display = "Invalid Token")]
     VerifyToken, 
+
+    #[fail(display = "unable to insert token in the database")]
+    InsertToken, 
 }
 
 pub struct Ws {
