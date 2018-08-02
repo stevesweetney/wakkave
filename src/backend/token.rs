@@ -10,7 +10,7 @@ lazy_static! {
 
 /// A web token
 #[derive(Serialize, Deserialize)]
-struct Token {
+pub struct Token {
     /// The subject of the token
     sub: String,
     /// The expiration time of the token
@@ -22,7 +22,7 @@ struct Token {
 }
 
 impl Token {
-    fn create(username: &str) -> Result<String, Error> {
+    pub fn create(username: &str) -> Result<String, Error> {
         const TOKEN_LIFETIME: i64 = 3600;
         let claims = Token {
             sub: username.to_owned(),
@@ -35,7 +35,7 @@ impl Token {
             .map_err(|_| Error::from(ServerError::CreateToken))
     }
 
-    fn verify(token: &str) -> Result<String, Error> {
+    pub fn verify(token: &str) -> Result<String, Error> {
         let data = jsonwebtoken::decode::<Token>(
             token, 
             SECRET.as_ref(), 

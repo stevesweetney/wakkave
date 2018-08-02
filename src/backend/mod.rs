@@ -11,6 +11,8 @@ use capnp::{
     serialize_packed
 };
 
+use backend::token::Token;
+
 use protocol_capnp::{request, response};
 
 use std::default::Default;
@@ -18,7 +20,7 @@ use std::default::Default;
 use failure::Error;
 
 #[derive(Debug, Fail)]
-enum ServerError {
+pub enum ServerError {
     #[fail(display = "unable to create token")]
     CreateToken,
 
@@ -114,7 +116,7 @@ impl Ws {
         self.builder
             .init_root::<response::Builder>()
             .init_login()
-            .set_token("Login Token!");
+            .set_token(&Token::create(name)?);
 
         self.write()
     }
