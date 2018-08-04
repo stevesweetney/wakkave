@@ -9,13 +9,18 @@ use capnp::{
     serialize_packed
 };
 
-use backend::{State, token::Token};
+use backend::{
+    State, 
+    token::Token,
+    database::executor::CreateSession,
+};
 
 use protocol_capnp::{request, response};
 
 use std::default::Default;
 
 use failure::Error;
+use futures::future::Future;
 
 pub struct Ws {
     data: Vec<u8>,
@@ -69,7 +74,7 @@ impl Ws {
             Ok(request::Login(data)) => {
                 match data.which() {
                     Ok(request::login::Credentials(data)) => {
-                        if let Err(e) = self.handle_request_login_credentials(data) {
+                        if let Err(e) = self.handle_request_login_credentials(data, ctx) {
                             println!("Error: {:?}", e);
                         }
 
@@ -97,15 +102,19 @@ impl Ws {
         ctx.binary(self.data.clone());
     }
 
-    fn handle_request_login_credentials(&mut self, data: request::login::credentials::Reader) -> Result<(), Error> {
+    fn handle_request_login_credentials(&mut self, data: request::login::credentials::Reader, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
         let name = data.get_username()?;
         let password = data.get_password()?;
         println!("Name: {} \nPassword: {}", name, password);
 
+        let token = ctx.state().db.send(CreateSession {
+            id: Token::create(name)?,
+        }).wait()??;
+
         self.builder
             .init_root::<response::Builder>()
             .init_login()
-            .set_token(&Token::create(name)?);
+            .set_token(&token.id);
 
         self.write()
     }

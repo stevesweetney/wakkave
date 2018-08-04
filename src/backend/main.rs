@@ -1,7 +1,6 @@
 extern crate dotenv;
 extern crate wakkave;
 
-
 use dotenv::dotenv;
 use wakkave::backend::server::Server;
 
