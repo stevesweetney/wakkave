@@ -1,4 +1,9 @@
 extern crate capnp;
+extern crate serde;
+
+#[macro_use]
+extern crate serde_derive;
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -8,6 +13,9 @@ extern crate failure;
 #[cfg(feature = "frontend")]
 #[macro_use]
 extern crate yew;
+
+#[cfg(feature = "frontend")]
+extern crate stdweb;
 
 #[cfg(feature="default")]
 extern crate actix;
@@ -35,11 +43,7 @@ extern crate uuid;
 extern crate time;
 
 #[cfg(feature="default")]
-extern crate serde;
-
-#[cfg(feature="default")]
-#[macro_use]
-extern crate serde_derive;
+extern crate futures;
 
 #[cfg(feature="default")]
 pub mod backend;
