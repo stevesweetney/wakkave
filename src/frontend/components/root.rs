@@ -5,8 +5,10 @@ use frontend::{
     routes::RouterComponent,
     services::{
         protocol::ProtocolService,
+        cookie::CookieService,
         router::{Request, Route, RouterAgent},
     },
+    SESSION_TOKEN,
 };
 use yew::{prelude::*, format, services::{
     websocket::{WebSocketService, WebSocketTask, WebSocketStatus},
@@ -47,6 +49,7 @@ pub struct RootComponent {
     protocol_service: ProtocolService,
     websocket_service: WebSocketService,
     ws: WebSocketTask,
+    cookie_service: CookieService,
 }
 
 impl Component for RootComponent {
@@ -70,6 +73,7 @@ impl Component for RootComponent {
             protocol_service: ProtocolService::new(),
             websocket_service: ws_service,
             ws: ws_task,
+            cookie_service: CookieService::new(),
         }
     }
 
@@ -88,13 +92,17 @@ impl Component for RootComponent {
                 if let WsResponse::Binary(bin) = response {
                     if let Ok(mut bytes) = bin {
                         match self.protocol_service.read_response_login(&mut bytes) {
-                            Ok(Some(_token)) => {
+                            Ok(Some(token)) => {
+                                self.cookie_service.set(SESSION_TOKEN, &token);
                                 self.router_agent
                                     .send(Request::ChangeRoute(RouterComponent::Feed.into()));
                                 return true;
                             }
                             Ok(None) => {return false;}, // Not my response
-                            Err(_e) => {
+                            Err(e) => {
+                                // Remote the existing cookie
+                                self.console_service.info(&format!("Login failed: {}", e));
+                                self.cookie_service.remove(SESSION_TOKEN);
                                 self.router_agent
                                     .send(Request::ChangeRoute(RouterComponent::Login.into()));
                                 return true;

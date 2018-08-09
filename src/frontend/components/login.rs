@@ -1,11 +1,18 @@
-use yew::prelude::*;
+use yew::{prelude::*, format};
 use yew::services::{
     websocket::{WebSocketService, WebSocketTask},
     ConsoleService,
 };
-use yew::format;
 
-use frontend::services::protocol::ProtocolService;
+use frontend::{
+    services::{
+        protocol::ProtocolService,
+        router::{RouterAgent, Route, Request},
+        cookie::CookieService,
+    },
+    routes::RouterComponent,
+    SESSION_TOKEN,
+};
 
 pub struct Login { 
     username: String,
@@ -14,6 +21,8 @@ pub struct Login {
     ws: WebSocketTask,
     protocol_service: ProtocolService,
     console_service: ConsoleService,
+    router_agent: Box<Bridge<RouterAgent<()>>>,
+    cookie_service: CookieService,
 }
 
 pub enum Msg {
@@ -21,6 +30,7 @@ pub enum Msg {
     UpdatePassword(String),
     LoginRequest,
     LoginResponse(WsResponse),
+    HandleRoute(Route<()>),
     Ignore,
 }
 
@@ -57,8 +67,14 @@ impl Component for Login {
             websocket_service: ws_service,
             ws: ws_task,
             protocol_service: ProtocolService::new(),
-            console_service: ConsoleService::new(),  
+            console_service: ConsoleService::new(),
+            router_agent: RouterAgent::bridge(link.send_back(|route| Msg::HandleRoute(route))),
+            cookie_service: CookieService::new(),  
         }
+    }
+
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+        true
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -80,15 +96,21 @@ impl Component for Login {
             Msg::LoginResponse(res) => {
                 if let WsResponse::Binary(bin) = res {
                     if let Ok(bytes) = bin {
-                        if let Ok(resp) = self.protocol_service.read_response_login(&bytes) {
-                            if let Some(token) = resp {
-                                self.console_service.log(&token)
+                        match self.protocol_service.read_response_login(&bytes) {
+                            Ok(Some(token)) =>  {
+                                self.cookie_service.set(SESSION_TOKEN, &token);
+                                self.router_agent.send(Request::ChangeRoute(RouterComponent::Feed.into()));
+                            },
+                            Ok(None) => return false,
+                            Err(e) => {
+                                self.console_service.warn(&format!("Unable to login: {}", e));
                             }
                         }
                     }
                 }
             },
             Msg::Ignore => return false,
+            _ => {}
         }
         true
     }

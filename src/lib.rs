@@ -15,6 +15,7 @@ extern crate failure;
 extern crate yew;
 
 #[cfg(feature = "frontend")]
+#[macro_use]
 extern crate stdweb;
 
 #[cfg(feature="default")]
