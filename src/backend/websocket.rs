@@ -5,14 +5,16 @@ use actix_web::{
 };
 
 use capnp::{
+    self,
     message::{ Builder, HeapAllocator, ReaderOptions },
-    serialize_packed
+    serialize_packed,
+    text
 };
 
 use backend::{
     State, 
     token::Token,
-    database::executor::CreateSession,
+    database::executor::{CreateSession, UpdateSession},
 };
 
 use protocol_capnp::{request, response};
@@ -81,7 +83,11 @@ impl Ws {
                         self.send(ctx);
                     }
                     Ok(request::login::Token(data)) => {
-                        println!("{}", data.unwrap());
+                         if let Err(e) = self.handle_request_login_token(data, ctx) {
+                            println!("Error: {:?}", e);
+                        }
+
+                        self.send(ctx);
                     }
                     Err(::capnp::NotInSchema(_)) => (),
                 }
@@ -115,6 +121,24 @@ impl Ws {
             .init_root::<response::Builder>()
             .init_login()
             .set_token(&token.id);
+
+        self.write()
+    }
+
+    fn handle_request_login_token(&mut self, data: Result<text::Reader, capnp::Error>, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
+        let token = data?;
+        println!("Renewing Token: {} \n", token);
+
+
+        let new_token = ctx.state().db.send(UpdateSession {
+            old_id: token.to_string(),
+            new_id: Token::verify(token)?,
+        }).wait()??;
+
+        self.builder
+            .init_root::<response::Builder>()
+            .init_login()
+            .set_token(&new_token.id);
 
         self.write()
     }

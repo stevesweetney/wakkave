@@ -46,6 +46,18 @@ impl ProtocolService {
         self.write()
     }
 
+    pub fn write_request_login_token(&mut self, token: &str) -> Result<&[u8], Error> {
+        {
+            let mut t = self
+                .builder
+                .init_root::<request::Builder>()
+                .init_login();
+            t.set_token(token);
+        }
+        
+        self.write()
+    }
+
     pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<String>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;

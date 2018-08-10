@@ -19,5 +19,8 @@ pub enum ServerError {
     VerifyToken,
 
     #[fail(display = "unable to insert token in the database")]
-    InsertToken, 
+    InsertToken,
+
+    #[fail(display = "unable to update token in the database")]
+    UpdateToken,  
 }

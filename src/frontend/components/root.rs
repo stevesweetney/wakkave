@@ -84,9 +84,21 @@ impl Component for RootComponent {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::WebSocketConnected => {
-                self.router_agent
-                    .send(Request::ChangeRoute(RouterComponent::Login.into()));
-                true
+                if let Ok(token) = self.cookie_service.get(SESSION_TOKEN) {
+                    match self.protocol_service.write_request_login_token(&token) {
+                        Ok(data) => {
+                            self.console_service.info("Token found, trying to authenticate");
+                            self.ws.send_binary(Ok(data.to_owned()));
+                        },
+                        Err(_) => {
+                            self.cookie_service.remove(SESSION_TOKEN);
+                            self.router_agent
+                                .send(Request::ChangeRoute(RouterComponent::Login.into()));
+                            return true;
+                        }
+                    }
+                }
+                false
             },
             Msg::LoginResponse(response) => {
                 if let WsResponse::Binary(bin) = response {

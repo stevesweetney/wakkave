@@ -28,7 +28,7 @@ impl CookieService {
         };
     }
 
-    pub fn get(name: &str) -> Result<String, Error> {
+    pub fn get(&self, name: &str) -> Result<String, Error> {
         let cookies = js! { return document.cookie.split(";"); };
         let cookies: Vec<String> = cookies.try_into()?;
         cookies
