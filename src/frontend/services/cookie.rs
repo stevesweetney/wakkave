@@ -45,7 +45,7 @@ impl CookieService {
                 }
             }).collect::<Vec<_>>()
                 .pop()
-                .ok_or(CookieError::NotFound.into())
+                .ok_or_else(|| CookieError::NotFound.into())
     }
 
     pub fn remove(&self, name: &str) {
