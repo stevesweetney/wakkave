@@ -11,7 +11,7 @@ pub struct Server {
     runner: SystemRunner,
 }
 
-fn create_user(_req: HttpRequest<State>) -> & 'static str {
+fn create_user(_req: &HttpRequest<State>) -> & 'static str {
     "Thank you for creating a user!"
 }
 

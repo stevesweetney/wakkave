@@ -7,7 +7,7 @@ use actix::prelude::*;
 use self::database::executor::DbExecutor;
 
 pub struct State {
-    pub db: Addr<Syn, DbExecutor>,
+    pub db: Addr<DbExecutor>,
 }
 
 #[derive(Debug, Fail)]
