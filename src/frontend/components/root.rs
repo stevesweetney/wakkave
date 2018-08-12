@@ -97,6 +97,11 @@ impl Component for RootComponent {
                             return true;
                         }
                     }
+                } else {
+                    self.console_service.info("No token found, routing to login");
+                    self.router_agent
+                        .send(Request::ChangeRoute(RouterComponent::Login.into()));
+                    return true;
                 }
                 false
             },
