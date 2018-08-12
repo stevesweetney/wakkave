@@ -2,12 +2,15 @@ pub mod token;
 pub mod websocket;
 pub mod database;
 pub mod server;
+pub mod chatserver;
 
 use actix::prelude::*;
 use self::database::executor::DbExecutor;
+use self::chatserver::ChatServer;
 
 pub struct State {
     pub db: Addr<DbExecutor>,
+    pub chat: Addr<ChatServer>,
 }
 
 #[derive(Debug, Fail)]
@@ -22,5 +25,8 @@ pub enum ServerError {
     InsertToken,
 
     #[fail(display = "unable to update token in the database")]
-    UpdateToken,  
+    UpdateToken,
+
+    #[fail(display = "unable to add user to chat")]
+    JoinChat,  
 }

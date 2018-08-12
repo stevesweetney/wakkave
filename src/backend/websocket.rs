@@ -1,4 +1,4 @@
-use actix::prelude::*;
+use actix::{prelude::*, fut};
 use actix_web::{
     ws::{ Message, ProtocolError, WebsocketContext },
     Binary,
@@ -15,6 +15,7 @@ use backend::{
     State, 
     token::Token,
     database::executor::{CreateSession, UpdateSession},
+    chatserver,
 };
 
 use protocol_capnp::{request, response};
@@ -27,6 +28,7 @@ use futures::future::Future;
 pub struct Ws {
     data: Vec<u8>,
     builder: Builder<HeapAllocator>,
+    id: Option<String>,
 }
 
 impl Default for Ws {
@@ -38,7 +40,26 @@ impl Default for Ws {
 
 impl Actor for Ws {
     type Context = WebsocketContext<Self, State>;
+
+    fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
+        // notify the chat server
+        if let Some(ref id) = self.id {
+            ctx.state().chat.do_send(chatserver::Disconnect { id: id.to_owned() });
+        }
+
+        Running::Stop
+    }
 }
+
+/// Handle messages from chat server, we simply send it to peer websocket
+impl Handler<chatserver::ServerMessage> for Ws {
+    type Result = ();
+
+    fn handle(&mut self, msg: chatserver::ServerMessage, ctx: &mut Self::Context) {
+        ctx.binary(msg.0);
+    }
+}
+
 
 impl StreamHandler<Message, ProtocolError> for Ws {
     fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {
@@ -62,6 +83,7 @@ impl Ws {
         Ws {
             data: Vec::new(),
             builder: Builder::new_default(),
+            id: None,
         }
     }
 
@@ -76,15 +98,17 @@ impl Ws {
             Ok(request::Login(data)) => {
                 match data.which() {
                     Ok(request::login::Credentials(data)) => {
-                        if let Err(e) = self.handle_request_login_credentials(data, ctx) {
-                            println!("Error: {:?}", e);
+                        match self.handle_request_login_credentials(data, ctx) {
+                            Ok(()) => self.connect_to_chat(ctx),
+                            Err(e) => println!("Error: {:?}", e),
                         }
 
                         self.send(ctx);
                     }
                     Ok(request::login::Token(data)) => {
-                         if let Err(e) = self.handle_request_login_token(data, ctx) {
-                            println!("Error: {:?}", e);
+                         match self.handle_request_login_token(data, ctx) {
+                            Ok(()) => self.connect_to_chat(ctx),
+                            Err(e) => println!("Error: {:?}", e),
                         }
 
                         self.send(ctx);
@@ -106,6 +130,25 @@ impl Ws {
 
     fn send(&self, ctx: &mut WebsocketContext<Self, State>) {
         ctx.binary(self.data.clone());
+    }
+
+    fn connect_to_chat(&self, ctx: &mut WebsocketContext<Self, State>) {
+        let addr = ctx.address();
+        ctx.state()
+            .chat
+            .send(chatserver::Connect {
+                addr: addr.recipient(),
+            })
+            .into_actor(self)
+            .then(|res, act, ctx| {
+                match res {
+                    Ok(res) => act.id = Some(res),
+                    // something is wrong with chat server
+                    _ => ctx.stop(),
+                }
+                fut::ok(())
+            })
+            .wait(ctx);
     }
 
     fn handle_request_login_credentials(&mut self, data: request::login::credentials::Reader, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
