@@ -86,8 +86,17 @@ impl Handler<Disconnect> for ChatServer {
         let idx = self.session_ids.iter().position(|x| *x == msg.id);
 
         if let Some(i) = idx {
-            self.session_addrs.remove(i);
-            self.session_ids.remove(i);
+            // Order does not matter
+            // Can swap the id and addr of the disconnecting
+            // session with the last element and pop the last
+            // element from the vectors
+            let len = self.session_addrs.len();
+            self.session_addrs.swap(i, len - 1);
+            self.session_addrs.pop();
+
+            let len = self.session_ids.len();            
+            self.session_ids.swap(i, len - 1);
+            self.session_ids.pop();
         }
 
         assert!(self.session_addrs.len() == self.session_ids.len());
