@@ -7,38 +7,19 @@ use frontend::{
         protocol::ProtocolService,
         cookie::CookieService,
         router::{Request, Route, RouterAgent},
+        websocket::{WebSocketAgent, WsResponse, Request as WsRequest},
     },
     SESSION_TOKEN,
 };
-use yew::{prelude::*, format, services::{
-    websocket::{WebSocketService, WebSocketTask, WebSocketStatus},
-    ConsoleService,
-}};
+use yew::{prelude::*, format, services::ConsoleService,};
 
 /// Available message types to process
 pub enum Msg {
     HandleRoute(Route<()>),
     LoginRequest,
-    LoginResponse(WsResponse),
+    LoginResponse(Vec<u8>),
     WebSocketConnected,
     WebSocketFailure,
-}
-
-pub enum WsResponse {
-    Text(format::Text),
-    Binary(format::Binary),
-}
-
-impl From<format::Text> for WsResponse {
-    fn from(text: format::Text) -> Self {
-        WsResponse::Text(text)
-    }
-}
-
-impl From<format::Binary> for WsResponse {
-    fn from(binary: format::Binary) -> Self {
-        WsResponse::Binary(binary)
-    }
 }
 
 /// Data Model for the Root Component
@@ -47,8 +28,7 @@ pub struct RootComponent {
     child_component: RouterComponent,
     console_service: ConsoleService,
     protocol_service: ProtocolService,
-    websocket_service: WebSocketService,
-    ws: WebSocketTask,
+    ws_agent: Box<Bridge<WebSocketAgent>>,
     cookie_service: CookieService,
 }
 
@@ -57,22 +37,19 @@ impl Component for RootComponent {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut ws_service = WebSocketService::new();
-        let ws_task = ws_service.connect(
-                "ws://127.0.0.1:8088",
-                link.send_back(|data| Msg::LoginResponse(data)),
-                link.send_back(|data| match data {
-                    WebSocketStatus::Opened => Msg::WebSocketConnected,
-                    _ => Msg::WebSocketFailure,
-                })
-            );
+        let callback = |msg| {
+            match msg {
+                WsResponse::Connected => Msg::WebSocketConnected,
+                WsResponse::Failure => Msg::WebSocketFailure,
+                WsResponse::Data(bytes) => Msg::LoginResponse(bytes)
+            }
+        };
         Self {
             router_agent: RouterAgent::bridge(link.send_back(|route| Msg::HandleRoute(route))),
             child_component: RouterComponent::Loading,
             console_service: ConsoleService::new(),
             protocol_service: ProtocolService::new(),
-            websocket_service: ws_service,
-            ws: ws_task,
+            ws_agent: WebSocketAgent::bridge(link.send_back(callback)),
             cookie_service: CookieService::new(),
         }
     }
@@ -88,7 +65,7 @@ impl Component for RootComponent {
                     match self.protocol_service.write_request_login_token(&token) {
                         Ok(data) => {
                             self.console_service.info("Token found, trying to authenticate");
-                            self.ws.send_binary(Ok(data.to_owned()));
+                            self.ws_agent.send(WsRequest(data.to_vec()));
                         },
                         Err(_) => {
                             self.cookie_service.remove(SESSION_TOKEN);
@@ -106,28 +83,23 @@ impl Component for RootComponent {
                 false
             },
             Msg::LoginResponse(response) => {
-                if let WsResponse::Binary(bin) = response {
-                    if let Ok(mut bytes) = bin {
-                        match self.protocol_service.read_response_login(&mut bytes) {
-                            Ok(Some(token)) => {
-                                self.cookie_service.set(SESSION_TOKEN, &token);
-                                self.router_agent
-                                    .send(Request::ChangeRoute(RouterComponent::Feed.into()));
-                                return true;
-                            }
-                            Ok(None) => {return false;}, // Not my response
-                            Err(e) => {
-                                // Remote the existing cookie
-                                self.console_service.info(&format!("Login failed: {}", e));
-                                self.cookie_service.remove(SESSION_TOKEN);
-                                self.router_agent
-                                    .send(Request::ChangeRoute(RouterComponent::Login.into()));
-                                return true;
-                            }
-                        }
+                match self.protocol_service.read_response_login(&response) {
+                    Ok(Some(token)) => {
+                        self.cookie_service.set(SESSION_TOKEN, &token);
+                        self.router_agent
+                            .send(Request::ChangeRoute(RouterComponent::Feed.into()));
+                        true
                     }
-                }
-                false  
+                    Ok(None) => false, // Not my response
+                    Err(e) => {
+                        // Remote the existing cookie
+                        self.console_service.info(&format!("Login failed: {}", e));
+                        self.cookie_service.remove(SESSION_TOKEN);
+                        self.router_agent
+                            .send(Request::ChangeRoute(RouterComponent::Login.into()));
+                        true
+                    }
+                }  
             },
             Msg::HandleRoute(route) => {
                 self.child_component = route.into();
