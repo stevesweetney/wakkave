@@ -98,24 +98,33 @@ impl Component for Login {
 impl Renderable<Login> for Login {
     fn view(&self) -> Html<Self> {
         html! {
-            <div>
+            <div class="uk-position-center",>
                 <form onsubmit="return false",>
-                    <br/>
-                    <input type="text", 
-                        name="username", 
-                        placeholder="Username",
-                        value=&self.username, 
-                        oninput=|e| Msg::UpdateUsername(e.value), />
-                    <br/>
-                    <br/>
-                    <input type="text", 
-                        name="password", 
-                        placeholder="Password",
-                        value=&self.password,
-                        oninput=|e| Msg::UpdatePassword(e.value), />
-                    <br/>
-                    <button type="submit",
-                        onclick=|_| Msg::LoginRequest,>{"Login"}</button>
+                    <div class="uk-margin",>
+                        <input
+                            class="uk-input",  
+                            type="text", 
+                            name="username", 
+                            placeholder="Username",
+                            value=&self.username, 
+                            oninput=|e| Msg::UpdateUsername(e.value), />
+                    </div>
+                    <div class="uk-margin",>
+                        <input
+                            class="uk-input", 
+                            type="text", 
+                            name="password", 
+                            placeholder="Password",
+                            value=&self.password,
+                            oninput=|e| Msg::UpdatePassword(e.value), />
+                    </div>
+                    <div class="uk-margin",>
+                        <button
+                            class="uk-button uk-button-default", 
+                            type="submit",
+                            onclick=|_| Msg::LoginRequest,>{"Login"}
+                        </button>
+                    </div>
                 </form> 
             </div>
         }

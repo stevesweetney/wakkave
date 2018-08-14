@@ -124,7 +124,7 @@ impl Renderable<RootComponent> for RouterComponent {
     fn view(&self) -> Html<RootComponent> {
         match *self {
             RouterComponent::Loading => html! {
-                <div class="uk-position-center", uk-spinner="",>{"Loading..."}</div>
+                <div class="uk-position-center", uk-spinner="",></div>
             },
             RouterComponent::Error => html! {
                 <div class="uk-position-center",>

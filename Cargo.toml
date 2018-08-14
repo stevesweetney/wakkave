@@ -14,6 +14,8 @@ required-features = ["frontend"]
 
 [build-dependencies]
 capnpc = "0.8.9"
+failure = "0.1.1"
+sass-rs = "0.2.1"
 
 [dependencies]
 actix = {version = "~0.7", optional = true}
