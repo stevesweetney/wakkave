@@ -47,6 +47,9 @@ extern crate time;
 extern crate futures;
 
 #[cfg(feature="default")]
+extern crate bcrypt;
+
+#[cfg(feature="default")]
 pub mod backend;
 
 #[cfg(feature = "frontend")]

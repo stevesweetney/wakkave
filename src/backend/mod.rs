@@ -28,5 +28,8 @@ pub enum ServerError {
     UpdateToken,
 
     #[fail(display = "unable to add user to chat")]
-    JoinChat,  
+    JoinChat,
+
+    #[fail(display = "unable to add a new user to the database")]
+    CreateUser,  
 }

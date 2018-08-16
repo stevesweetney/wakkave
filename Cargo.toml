@@ -30,6 +30,7 @@ r2d2 = { version = "0.8.2", optional = true }
 jsonwebtoken = { git = "https://github.com/Keats/jsonwebtoken", optional = true }
 uuid = { version = "0.6", features = ["v4"], optional = true }
 time = { version = "0.1.40", optional = true }
+bcrypt = { version = "0.2", optional = true }
 lazy_static = "1.0.2"
 failure = "0.1.1"
 serde = "1.0.70"
@@ -45,6 +46,7 @@ default = [
     "dotenv",
     "r2d2",
     "futures",
+    "bcrypt",
 ]
 frontend = [
     "yew",
