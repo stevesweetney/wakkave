@@ -124,7 +124,7 @@ where
     pub fn current_route(route_service: &RouterService<T>) -> Result<Self, Error> {
         // guaranteed to always start with a '/'
         let path = route_service.get_path()?;
-        let mut path_segments: Vec<String> = path.split("/").map(String::from).collect();
+        let mut path_segments: Vec<String> = path.split('/').map(String::from).collect();
         // remove empty string that is split from the first '/'
         path_segments.remove(0);
 
