@@ -146,7 +146,17 @@ impl Ws {
 
                 self.send(ctx);
             },
-            Ok(request::Logout(_data)) => (),
+            Ok(request::Logout(data)) => {
+                if let Err(e) = self.handle_request_logout(data, ctx) {
+                    self.builder
+                        .init_root::<response::Builder>()
+                        .init_logout()
+                        .set_error(&e.to_string());
+                        let _ = self.write();
+                }
+
+                self.send(ctx);
+            },
             Err(::capnp::NotInSchema(_)) => (),
         }
     }
@@ -275,8 +285,15 @@ impl Ws {
 
         self.write()
     }
-            .set_token(&new_token.id);
 
+    fn handle_request_logout(&mut self, data: Result<text::Reader, capnp::Error>, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
+        let token = data?;
+        ctx.state().db.send(DeleteSession { session_id: token.to_string() })
+            .wait()??;
+
+        self.builder.init_root::<response::Builder>()
+            .init_logout()
+            .set_success(());
         self.write()
     }
 }

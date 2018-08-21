@@ -27,11 +27,14 @@ pub enum ServerError {
     #[fail(display = "unable to update token in the database")]
     UpdateToken,
 
+    #[fail(display = "unable to remove token from the database")]
+    RemoveToken,
+
     #[fail(display = "unable to add user to chat")]
     JoinChat,
 
     #[fail(display = "unable to add a new user to the database")]
-    CreateUser,  
+    CreateUser, 
 
     #[fail(display = "unable to find user in the database")]
     FindUser,
