@@ -32,4 +32,10 @@ pub enum ServerError {
 
     #[fail(display = "unable to add a new user to the database")]
     CreateUser,  
+
+    #[fail(display = "unable to find user in the database")]
+    FindUser,
+
+    #[fail(display = "Password is incorrect")]
+    IncorrectPassword, 
 }

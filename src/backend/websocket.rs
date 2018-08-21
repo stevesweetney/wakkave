@@ -14,7 +14,10 @@ use capnp::{
 use backend::{
     State, 
     token::Token,
-    database::executor::{CreateSession, UpdateSession},
+    database::executor::{
+        CreateSession, UpdateSession, CreateUser, FindUser, FindUserID,
+        DeleteSession,
+    },
     chatserver,
 };
 
@@ -100,7 +103,13 @@ impl Ws {
                     Ok(request::login::Credentials(data)) => {
                         match self.handle_request_login_credentials(data, ctx) {
                             Ok(()) => self.connect_to_chat(ctx),
-                            Err(e) => println!("Error: {:?}", e),
+                            Err(e) => {
+                                self.builder
+                                    .init_root::<response::Builder>()
+                                    .init_login()
+                                    .set_error(&e.to_string());
+                                println!("Error: {:?}", e);
+                            },
                         }
 
                         self.send(ctx);
@@ -108,7 +117,14 @@ impl Ws {
                     Ok(request::login::Token(data)) => {
                          match self.handle_request_login_token(data, ctx) {
                             Ok(()) => self.connect_to_chat(ctx),
-                            Err(e) => println!("Error: {:?}", e),
+                            Err(e) => {
+                                self.builder
+                                    .init_root::<response::Builder>()
+                                    .init_login()
+                                    .set_error(&e.to_string());
+                                    let _ = self.write();
+                                    println!("Error: {:?}", e);
+                            },
                         }
 
                         self.send(ctx);
@@ -116,6 +132,20 @@ impl Ws {
                     Err(::capnp::NotInSchema(_)) => (),
                 }
             }
+            Ok(request::Registration(data)) => {
+                match self.handle_request_registration(data, ctx) {
+                    Ok(()) => self.connect_to_chat(ctx),
+                    Err(e) => {
+                        self.builder
+                            .init_root::<response::Builder>()
+                            .init_login()
+                            .set_error(&e.to_string());
+                        let _ = self.write();
+                    },
+                }
+
+                self.send(ctx);
+            },
             Ok(request::Logout(_data)) => (),
             Err(::capnp::NotInSchema(_)) => (),
         }
@@ -156,14 +186,34 @@ impl Ws {
         let password = data.get_password()?;
         println!("Name: {} \nPassword: {}", name, password);
 
-        let token = ctx.state().db.send(CreateSession {
-            id: Token::create(name)?,
+        let user = ctx.state().db.send(FindUser {
+            username: name.to_string(),
+            password: password.to_string(),
         }).wait()??;
 
-        self.builder
-            .init_root::<response::Builder>()
-            .init_login()
-            .set_token(&token.id);
+        match user {
+            Some(user) => {
+                let token = ctx.state().db.send(CreateSession {
+                    id: Token::create(user.id)?,
+                }).wait()??;
+
+                let mut success = self.builder
+                    .init_root::<response::Builder>()
+                    .init_login()
+                    .init_success();
+
+                success.set_token(&token.id);
+
+                let mut u = success.init_user();
+                u.set_id(user.id);
+                u.set_username(&user.username);
+                u.set_karma(user.karma);
+                u.set_streak(user.streak);
+            }
+            None => {
+                return Err(super::ServerError::FindUser.into());
+            }
+        }
 
         self.write()
     }
@@ -172,15 +222,59 @@ impl Ws {
         let token = data?;
         println!("Renewing Token: {} \n", token);
 
+        let (new_id, user_id) = Token::verify(token)?;
 
         let new_token = ctx.state().db.send(UpdateSession {
             old_id: token.to_string(),
-            new_id: Token::verify(token)?,
+            new_id,
         }).wait()??;
 
-        self.builder
-            .init_root::<response::Builder>()
-            .init_login()
+        let user = ctx.state().db.send(FindUserID { user_id }).wait()??;
+
+        match user {
+            Some(user) => {
+                let mut success = self.builder
+                    .init_root::<response::Builder>()
+                    .init_login()
+                    .init_success();
+
+                success.set_token(&new_token.id);
+
+                let mut u = success.init_user();
+                u.set_id(user.id);
+                u.set_username(&user.username);
+                u.set_karma(user.karma);
+                u.set_streak(user.streak);
+            }
+            None => {
+                return Err(super::ServerError::FindUser.into());
+            }
+        }
+
+        self.write()
+    }
+
+    fn handle_request_registration(&mut self, data: request::registration::Reader, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
+        let username = data.get_username()?.to_string();
+        let password = data.get_password()?.to_string();
+        let user = ctx.state().db.send(CreateUser { username, password })
+            .wait()??;
+        {
+            let mut success = self.builder
+                .init_root::<response::Builder>()
+                .init_login()
+                .init_success();
+            success.set_token(&Token::create(user.id)?);
+    
+            let mut u = success.init_user();
+            u.set_id(user.id);
+            u.set_username(&user.username);
+            u.set_karma(user.karma);
+            u.set_streak(user.streak);
+        } 
+
+        self.write()
+    }
             .set_token(&new_token.id);
 
         self.write()

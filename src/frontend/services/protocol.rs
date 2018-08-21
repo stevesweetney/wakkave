@@ -58,13 +58,29 @@ impl ProtocolService {
         self.write()
     }
 
+    pub fn write_request_registration(&mut self, name: &str, password: &str) -> Result<&[u8], Error> {
+        {
+            let mut registration = self
+                .builder
+                .init_root::<request::Builder>()
+                .init_registration();
+            registration.set_username(name);
+            registration.set_password(password);
+        }
+        self.write()
+    }
+
     pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<String>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
 
         match response.which()? {
             response::Login(data) => match data.which()? {
-                response::login::Token(token) => Ok(Some(token?.to_owned())),
+                response::login::Success(data) => {
+                    let token = data.get_token()?;
+                    let user = data.get_user()?;
+                    Ok(Some(token.to_owned()))
+                },
                 response::login::Error(error) => Err(Error::from(ProtocolError::Response {
                     description: error?.to_owned()
                 })),
