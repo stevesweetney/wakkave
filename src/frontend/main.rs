@@ -1,8 +1,8 @@
-extern crate yew;
 extern crate wakkave;
+extern crate yew;
 
-use yew::prelude::*;
 use wakkave::frontend::components::root::RootComponent;
+use yew::prelude::*;
 
 fn main() {
     yew::initialize();

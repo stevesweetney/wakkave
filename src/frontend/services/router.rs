@@ -27,7 +27,9 @@ where
 {
     /// Creates the route service.
     pub fn new() -> RouterService<T> {
-        let location = window().location().expect("browser does not support location API");
+        let location = window()
+            .location()
+            .expect("browser does not support location API");
         Self {
             history: window().history(),
             location,
@@ -182,7 +184,14 @@ impl<T> Transferable for Request<T> where for<'de> T: Serialize + Deserialize<'d
 /// access to it.
 pub struct RouterAgent<T>
 where
-    for<'de> T: JsSerialize + Clone + Debug + TryFrom<Value> + Default + Serialize + Deserialize<'de> + 'static,
+    for<'de> T: JsSerialize
+        + Clone
+        + Debug
+        + TryFrom<Value>
+        + Default
+        + Serialize
+        + Deserialize<'de>
+        + 'static,
 {
     link: AgentLink<RouterAgent<T>>,
     route_service: RouterService<T>,
@@ -194,7 +203,14 @@ where
 
 impl<T> Agent for RouterAgent<T>
 where
-    for<'de> T: JsSerialize + Clone + Debug + TryFrom<Value> + Default + Serialize + Deserialize<'de> + 'static,
+    for<'de> T: JsSerialize
+        + Clone
+        + Debug
+        + TryFrom<Value>
+        + Default
+        + Serialize
+        + Deserialize<'de>
+        + 'static,
 {
     type Reach = Context;
     type Message = Message<T>;
@@ -202,8 +218,9 @@ where
     type Output = Route<T>;
 
     fn create(link: AgentLink<Self>) -> Self {
-        let callback =
-            link.send_back(|route_changed: (String, T)| Message::BrowserNavigationRouteChanged(route_changed));
+        let callback = link.send_back(|route_changed: (String, T)| {
+            Message::BrowserNavigationRouteChanged(route_changed)
+        });
         let mut route_service = RouterService::new();
         route_service.register_callback(callback);
 

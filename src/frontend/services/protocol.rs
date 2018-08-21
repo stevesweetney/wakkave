@@ -1,6 +1,6 @@
 use capnp::{
-    message::{ Builder, HeapAllocator, ReaderOptions },
-    serialize_packed
+    message::{Builder, HeapAllocator, ReaderOptions},
+    serialize_packed,
 };
 use protocol_capnp::{request, response};
 
@@ -32,7 +32,11 @@ impl ProtocolService {
         Ok(&self.data)
     }
 
-    pub fn write_request_login_credentials(&mut self, name: &str, password: &str) -> Result<&[u8], Error> {
+    pub fn write_request_login_credentials(
+        &mut self,
+        name: &str,
+        password: &str,
+    ) -> Result<&[u8], Error> {
         {
             let mut creds = self
                 .builder
@@ -42,23 +46,24 @@ impl ProtocolService {
             creds.set_username(name);
             creds.set_password(password);
         }
-        
+
         self.write()
     }
 
     pub fn write_request_login_token(&mut self, token: &str) -> Result<&[u8], Error> {
         {
-            let mut t = self
-                .builder
-                .init_root::<request::Builder>()
-                .init_login();
+            let mut t = self.builder.init_root::<request::Builder>().init_login();
             t.set_token(token);
         }
-        
+
         self.write()
     }
 
-    pub fn write_request_registration(&mut self, name: &str, password: &str) -> Result<&[u8], Error> {
+    pub fn write_request_registration(
+        &mut self,
+        name: &str,
+        password: &str,
+    ) -> Result<&[u8], Error> {
         {
             let mut registration = self
                 .builder
@@ -80,12 +85,12 @@ impl ProtocolService {
                     let token = data.get_token()?;
                     let user = data.get_user()?;
                     Ok(Some(token.to_owned()))
-                },
+                }
                 response::login::Error(error) => Err(Error::from(ProtocolError::Response {
-                    description: error?.to_owned()
+                    description: error?.to_owned(),
                 })),
             },
             _ => Ok(None),
-        } 
+        }
     }
 }

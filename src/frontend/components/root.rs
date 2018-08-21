@@ -1,17 +1,17 @@
 //! The Root component
 
 use frontend::{
-    components::{login::Login, feed::Feed},
+    components::{feed::Feed, login::Login},
     routes::RouterComponent,
     services::{
-        protocol::ProtocolService,
         cookie::CookieService,
+        protocol::ProtocolService,
         router::{Request, Route, RouterAgent},
-        websocket::{WebSocketAgent, WsResponse, Request as WsRequest},
+        websocket::{Request as WsRequest, WebSocketAgent, WsResponse},
     },
     SESSION_TOKEN,
 };
-use yew::{prelude::*, format, services::ConsoleService,};
+use yew::{format, prelude::*, services::ConsoleService};
 
 /// Available message types to process
 pub enum Msg {
@@ -37,12 +37,10 @@ impl Component for RootComponent {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = |msg| {
-            match msg {
-                WsResponse::Connected => Msg::WebSocketConnected,
-                WsResponse::Failure => Msg::WebSocketFailure,
-                WsResponse::Data(bytes) => Msg::LoginResponse(bytes)
-            }
+        let callback = |msg| match msg {
+            WsResponse::Connected => Msg::WebSocketConnected,
+            WsResponse::Failure => Msg::WebSocketFailure,
+            WsResponse::Data(bytes) => Msg::LoginResponse(bytes),
         };
         Self {
             router_agent: RouterAgent::bridge(link.send_back(|route| Msg::HandleRoute(route))),
@@ -64,9 +62,10 @@ impl Component for RootComponent {
                 if let Ok(token) = self.cookie_service.get(SESSION_TOKEN) {
                     match self.protocol_service.write_request_login_token(&token) {
                         Ok(data) => {
-                            self.console_service.info("Token found, trying to authenticate");
+                            self.console_service
+                                .info("Token found, trying to authenticate");
                             self.ws_agent.send(WsRequest(data.to_vec()));
-                        },
+                        }
                         Err(_) => {
                             self.cookie_service.remove(SESSION_TOKEN);
                             self.router_agent
@@ -75,13 +74,14 @@ impl Component for RootComponent {
                         }
                     }
                 } else {
-                    self.console_service.info("No token found, routing to login");
+                    self.console_service
+                        .info("No token found, routing to login");
                     self.router_agent
                         .send(Request::ChangeRoute(RouterComponent::Login.into()));
                     return true;
                 }
                 false
-            },
+            }
             Msg::LoginResponse(response) => {
                 match self.protocol_service.read_response_login(&response) {
                     Ok(Some(token)) => {
@@ -99,8 +99,8 @@ impl Component for RootComponent {
                             .send(Request::ChangeRoute(RouterComponent::Login.into()));
                         true
                     }
-                }  
-            },
+                }
+            }
             Msg::HandleRoute(route) => {
                 self.child_component = route.into();
                 true

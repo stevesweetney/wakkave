@@ -1,12 +1,12 @@
-pub mod token;
-pub mod websocket;
+pub mod chatserver;
 pub mod database;
 pub mod server;
-pub mod chatserver;
+pub mod token;
+pub mod websocket;
 
-use actix::prelude::*;
-use self::database::executor::DbExecutor;
 use self::chatserver::ChatServer;
+use self::database::executor::DbExecutor;
+use actix::prelude::*;
 
 pub struct State {
     pub db: Addr<DbExecutor>,
@@ -18,7 +18,7 @@ pub enum ServerError {
     #[fail(display = "unable to create token")]
     CreateToken,
 
-   #[fail(display = "Invalid Token")]
+    #[fail(display = "Invalid Token")]
     VerifyToken,
 
     #[fail(display = "unable to insert token in the database")]
@@ -34,11 +34,11 @@ pub enum ServerError {
     JoinChat,
 
     #[fail(display = "unable to add a new user to the database")]
-    CreateUser, 
+    CreateUser,
 
     #[fail(display = "unable to find user in the database")]
     FindUser,
 
     #[fail(display = "Password is incorrect")]
-    IncorrectPassword, 
+    IncorrectPassword,
 }

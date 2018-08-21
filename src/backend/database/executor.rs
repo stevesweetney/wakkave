@@ -1,14 +1,14 @@
 use actix::prelude::*;
 use actix_web::*;
+use bcrypt::{self, DEFAULT_COST};
 use diesel::{
     self,
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
 use failure::Error;
-use bcrypt::{self, DEFAULT_COST};
 
-use super::models::{Session, NewUser, User};
+use super::models::{NewUser, Session, User};
 use backend::ServerError;
 
 pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);
@@ -31,7 +31,7 @@ impl Handler<CreateSession> for DbExecutor {
     fn handle(&mut self, msg: CreateSession, _: &mut Self::Context) -> Self::Result {
         use super::schema::sessions::dsl::*;
         diesel::insert_into(sessions)
-            .values(&Session {id: msg.id})
+            .values(&Session { id: msg.id })
             .get_result::<Session>(&self.0.get()?)
             .map_err(|_| ServerError::InsertToken.into())
     }
@@ -76,7 +76,7 @@ impl Handler<DeleteSession> for DbExecutor {
             .map(|_| ())
             .map_err(|_| ServerError::RemoveToken.into())
     }
-} 
+}
 
 pub struct CreateUser {
     pub username: String,
@@ -94,7 +94,8 @@ impl Handler<CreateUser> for DbExecutor {
         use super::schema::users::dsl::*;
         diesel::insert_into(users)
             .values(&NewUser {
-                username: msg.username, password: bcrypt::hash(&msg.password, DEFAULT_COST)?
+                username: msg.username,
+                password: bcrypt::hash(&msg.password, DEFAULT_COST)?,
             })
             .get_result::<User>(&self.0.get()?)
             .map_err(|_| ServerError::CreateUser.into())
@@ -121,7 +122,7 @@ impl Handler<FindUser> for DbExecutor {
             .first::<User>(&self.0.get()?)
             .optional()
             .map_err(|_| ServerError::FindUser)?;
-        
+
         match user {
             Some(u) => {
                 if bcrypt::verify(&msg.password, &u.password)? {
@@ -129,8 +130,8 @@ impl Handler<FindUser> for DbExecutor {
                 } else {
                     Err(ServerError::IncorrectPassword.into())
                 }
-            },
-            None => Ok(None)
+            }
+            None => Ok(None),
         }
     }
 }
@@ -154,12 +155,10 @@ impl Handler<FindUserID> for DbExecutor {
             .first::<User>(&self.0.get()?)
             .optional()
             .map_err(|_| ServerError::FindUser)?;
-        
+
         match user {
-            Some(u) => {
-                Ok(Some(u))
-            },
-            None => Ok(None)
+            Some(u) => Ok(Some(u)),
+            None => Ok(None),
         }
     }
 }

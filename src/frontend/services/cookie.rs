@@ -23,7 +23,7 @@ impl CookieService {
     /// Set a cookie for a given name and value for a default validity of one year
     pub fn set_expiring(&self, name: &str, value: &str, days: i32) {
         js! {
-            document.cookie = @{name} + "=" + @{value} + 
+            document.cookie = @{name} + "=" + @{value} +
                 ";max-age=" + (@{days} * 24 * 60 * 60) + ";path=/";
         };
     }
@@ -40,12 +40,15 @@ impl CookieService {
                     Some(name_value) => {
                         if *name_value == name {
                             value_pair.get(1).map(|x| (*x).to_owned())
-                        } else { None }
+                        } else {
+                            None
+                        }
                     }
                 }
-            }).collect::<Vec<_>>()
-                .pop()
-                .ok_or_else(|| CookieError::NotFound.into())
+            })
+            .collect::<Vec<_>>()
+            .pop()
+            .ok_or_else(|| CookieError::NotFound.into())
     }
 
     pub fn remove(&self, name: &str) {

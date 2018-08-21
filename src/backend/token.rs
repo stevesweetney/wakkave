@@ -1,8 +1,8 @@
-use time;
-use uuid::Uuid;
-use jsonwebtoken::{self, Header, Validation };
 use super::ServerError;
 use failure::Error;
+use jsonwebtoken::{self, Header, Validation};
+use time;
+use uuid::Uuid;
 
 lazy_static! {
     static ref SECRET: String = Uuid::new_v4().to_string();
@@ -36,10 +36,8 @@ impl Token {
     }
 
     pub fn verify(token: &str) -> Result<(String, i32), Error> {
-        let data = jsonwebtoken::decode::<Token>(
-            token, 
-            SECRET.as_ref(), 
-            &Validation::default()).map_err(|_| Error::from(ServerError::VerifyToken))?;
+        let data = jsonwebtoken::decode::<Token>(token, SECRET.as_ref(), &Validation::default())
+            .map_err(|_| Error::from(ServerError::VerifyToken))?;
         let token = Self::create(data.claims.sub)?;
         Ok((token, data.claims.sub))
     }

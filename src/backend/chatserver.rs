@@ -25,7 +25,7 @@ pub struct Disconnect {
 #[derive(Default)]
 pub struct ChatServer {
     session_ids: Vec<String>,
-    session_addrs: Vec<Recipient<ServerMessage>> 
+    session_addrs: Vec<Recipient<ServerMessage>>,
 }
 
 impl ChatServer {
@@ -66,12 +66,12 @@ impl Handler<Connect> for ChatServer {
             // send existing id back
             self.session_ids[idx].clone()
         } else {
-                let id = Uuid::new_v4().to_string();
-                self.session_addrs.push(msg.addr);
-                self.session_ids.push(id.clone());
-                assert!(self.session_addrs.len() == self.session_ids.len());
-                // send new id back
-                id
+            let id = Uuid::new_v4().to_string();
+            self.session_addrs.push(msg.addr);
+            self.session_ids.push(id.clone());
+            assert!(self.session_addrs.len() == self.session_ids.len());
+            // send new id back
+            id
         }
     }
 }
@@ -94,7 +94,7 @@ impl Handler<Disconnect> for ChatServer {
             self.session_addrs.swap(i, len - 1);
             self.session_addrs.pop();
 
-            let len = self.session_ids.len();            
+            let len = self.session_ids.len();
             self.session_ids.swap(i, len - 1);
             self.session_ids.pop();
         }

@@ -27,43 +27,43 @@ fn main() -> Result<(), Error> {
 }
 
 fn prepare_style() -> Result<(), Error> {
-        // Prepare the directory
-        let out_dir = env::var("OUT_DIR")?;
-        let mut target = PathBuf::from(out_dir);
-        target.push("uikit");
+    // Prepare the directory
+    let out_dir = env::var("OUT_DIR")?;
+    let mut target = PathBuf::from(out_dir);
+    target.push("uikit");
 
-        // Clone the repo if needed
-        if !Path::new(&target).exists() {
-            let status = Command::new("git")
-                .arg("clone")
-                .arg(format!("--branch={}", TAG))
-                .arg("--recursive")
-                .arg(REPOSITORY)
-                .arg(&target)
-                .status()?;
-            if !status.success() {
-                panic!("Failed to build Uikit");
-            }
+    // Clone the repo if needed
+    if !Path::new(&target).exists() {
+        let status = Command::new("git")
+            .arg("clone")
+            .arg(format!("--branch={}", TAG))
+            .arg("--recursive")
+            .arg(REPOSITORY)
+            .arg(&target)
+            .status()?;
+        if !status.success() {
+            panic!("Failed to build Uikit");
         }
-        
-        // Copy the scss file into the output directory
-        target.pop();
-        target.push(SCSS_FILE);
-        copy(format!("src/frontend/{}", SCSS_FILE), &target)?;
+    }
 
-        // Build the file
-        let mut options = Options::default();
-        options.output_style = OutputStyle::Compressed;
-        match compile_file(&target, options) {
-            Err(error) => panic!(error),
-            Ok(content) => {
-                // Copy the file into the static directory
-                target.pop();
-                target.push(CSS_FILE);
-                write(&target, content)?;
-                copy(&target, format!("static/css/{}", CSS_FILE))?;
-            }
+    // Copy the scss file into the output directory
+    target.pop();
+    target.push(SCSS_FILE);
+    copy(format!("src/frontend/{}", SCSS_FILE), &target)?;
+
+    // Build the file
+    let mut options = Options::default();
+    options.output_style = OutputStyle::Compressed;
+    match compile_file(&target, options) {
+        Err(error) => panic!(error),
+        Ok(content) => {
+            // Copy the file into the static directory
+            target.pop();
+            target.push(CSS_FILE);
+            write(&target, content)?;
+            copy(&target, format!("static/css/{}", CSS_FILE))?;
         }
+    }
 
     Ok(())
 }

@@ -1,24 +1,22 @@
-use actix::{prelude::*, fut};
+use actix::{fut, prelude::*};
 use actix_web::{
-    ws::{ Message, ProtocolError, WebsocketContext },
+    ws::{Message, ProtocolError, WebsocketContext},
     Binary,
 };
 
 use capnp::{
     self,
-    message::{ Builder, HeapAllocator, ReaderOptions },
-    serialize_packed,
-    text
+    message::{Builder, HeapAllocator, ReaderOptions},
+    serialize_packed, text,
 };
 
 use backend::{
-    State, 
-    token::Token,
-    database::executor::{
-        CreateSession, UpdateSession, CreateUser, FindUser, FindUserID,
-        DeleteSession,
-    },
     chatserver,
+    database::executor::{
+        CreateSession, CreateUser, DeleteSession, FindUser, FindUserID, UpdateSession,
+    },
+    token::Token,
+    State,
 };
 
 use protocol_capnp::{request, response};
@@ -40,14 +38,15 @@ impl Default for Ws {
     }
 }
 
-
 impl Actor for Ws {
     type Context = WebsocketContext<Self, State>;
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
         // notify the chat server
         if let Some(ref id) = self.id {
-            ctx.state().chat.do_send(chatserver::Disconnect { id: id.to_owned() });
+            ctx.state()
+                .chat
+                .do_send(chatserver::Disconnect { id: id.to_owned() });
         }
 
         Running::Stop
@@ -63,19 +62,18 @@ impl Handler<chatserver::ServerMessage> for Ws {
     }
 }
 
-
 impl StreamHandler<Message, ProtocolError> for Ws {
     fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {
         match msg {
             Message::Text(text) => {
                 ctx.text(text);
-            },
+            }
             Message::Binary(bin) => {
                 self.handle_request(&bin, ctx);
             }
             Message::Close(_reason) => {
                 ctx.stop();
-            },
+            }
             _ => (),
         };
     }
@@ -94,44 +92,43 @@ impl Ws {
         let reader = serialize_packed::read_message(&mut data.as_ref(), ReaderOptions::new())
             .expect("Error reading message");
 
-        let request = reader.get_root::<request::Reader>()
+        let request = reader
+            .get_root::<request::Reader>()
             .expect("Error getting message root");
 
         match request.which() {
-            Ok(request::Login(data)) => {
-                match data.which() {
-                    Ok(request::login::Credentials(data)) => {
-                        match self.handle_request_login_credentials(data, ctx) {
-                            Ok(()) => self.connect_to_chat(ctx),
-                            Err(e) => {
-                                self.builder
-                                    .init_root::<response::Builder>()
-                                    .init_login()
-                                    .set_error(&e.to_string());
-                                println!("Error: {:?}", e);
-                            },
+            Ok(request::Login(data)) => match data.which() {
+                Ok(request::login::Credentials(data)) => {
+                    match self.handle_request_login_credentials(data, ctx) {
+                        Ok(()) => self.connect_to_chat(ctx),
+                        Err(e) => {
+                            self.builder
+                                .init_root::<response::Builder>()
+                                .init_login()
+                                .set_error(&e.to_string());
+                            println!("Error: {:?}", e);
                         }
-
-                        self.send(ctx);
                     }
-                    Ok(request::login::Token(data)) => {
-                         match self.handle_request_login_token(data, ctx) {
-                            Ok(()) => self.connect_to_chat(ctx),
-                            Err(e) => {
-                                self.builder
-                                    .init_root::<response::Builder>()
-                                    .init_login()
-                                    .set_error(&e.to_string());
-                                    let _ = self.write();
-                                    println!("Error: {:?}", e);
-                            },
-                        }
 
-                        self.send(ctx);
-                    }
-                    Err(::capnp::NotInSchema(_)) => (),
+                    self.send(ctx);
                 }
-            }
+                Ok(request::login::Token(data)) => {
+                    match self.handle_request_login_token(data, ctx) {
+                        Ok(()) => self.connect_to_chat(ctx),
+                        Err(e) => {
+                            self.builder
+                                .init_root::<response::Builder>()
+                                .init_login()
+                                .set_error(&e.to_string());
+                            let _ = self.write();
+                            println!("Error: {:?}", e);
+                        }
+                    }
+
+                    self.send(ctx);
+                }
+                Err(::capnp::NotInSchema(_)) => (),
+            },
             Ok(request::Registration(data)) => {
                 match self.handle_request_registration(data, ctx) {
                     Ok(()) => self.connect_to_chat(ctx),
@@ -141,22 +138,22 @@ impl Ws {
                             .init_login()
                             .set_error(&e.to_string());
                         let _ = self.write();
-                    },
+                    }
                 }
 
                 self.send(ctx);
-            },
+            }
             Ok(request::Logout(data)) => {
                 if let Err(e) = self.handle_request_logout(data, ctx) {
                     self.builder
                         .init_root::<response::Builder>()
                         .init_logout()
                         .set_error(&e.to_string());
-                        let _ = self.write();
+                    let _ = self.write();
                 }
 
                 self.send(ctx);
-            },
+            }
             Err(::capnp::NotInSchema(_)) => (),
         }
     }
@@ -191,23 +188,36 @@ impl Ws {
             .wait(ctx);
     }
 
-    fn handle_request_login_credentials(&mut self, data: request::login::credentials::Reader, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
+    fn handle_request_login_credentials(
+        &mut self,
+        data: request::login::credentials::Reader,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
         let name = data.get_username()?;
         let password = data.get_password()?;
         println!("Name: {} \nPassword: {}", name, password);
 
-        let user = ctx.state().db.send(FindUser {
-            username: name.to_string(),
-            password: password.to_string(),
-        }).wait()??;
+        let user = ctx
+            .state()
+            .db
+            .send(FindUser {
+                username: name.to_string(),
+                password: password.to_string(),
+            })
+            .wait()??;
 
         match user {
             Some(user) => {
-                let token = ctx.state().db.send(CreateSession {
-                    id: Token::create(user.id)?,
-                }).wait()??;
+                let token = ctx
+                    .state()
+                    .db
+                    .send(CreateSession {
+                        id: Token::create(user.id)?,
+                    })
+                    .wait()??;
 
-                let mut success = self.builder
+                let mut success = self
+                    .builder
                     .init_root::<response::Builder>()
                     .init_login()
                     .init_success();
@@ -228,22 +238,31 @@ impl Ws {
         self.write()
     }
 
-    fn handle_request_login_token(&mut self, data: Result<text::Reader, capnp::Error>, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
+    fn handle_request_login_token(
+        &mut self,
+        data: Result<text::Reader, capnp::Error>,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
         let token = data?;
         println!("Renewing Token: {} \n", token);
 
         let (new_id, user_id) = Token::verify(token)?;
 
-        let new_token = ctx.state().db.send(UpdateSession {
-            old_id: token.to_string(),
-            new_id,
-        }).wait()??;
+        let new_token = ctx
+            .state()
+            .db
+            .send(UpdateSession {
+                old_id: token.to_string(),
+                new_id,
+            })
+            .wait()??;
 
         let user = ctx.state().db.send(FindUserID { user_id }).wait()??;
 
         match user {
             Some(user) => {
-                let mut success = self.builder
+                let mut success = self
+                    .builder
                     .init_root::<response::Builder>()
                     .init_login()
                     .init_success();
@@ -264,34 +283,51 @@ impl Ws {
         self.write()
     }
 
-    fn handle_request_registration(&mut self, data: request::registration::Reader, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
+    fn handle_request_registration(
+        &mut self,
+        data: request::registration::Reader,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
         let username = data.get_username()?.to_string();
         let password = data.get_password()?.to_string();
-        let user = ctx.state().db.send(CreateUser { username, password })
+        let user = ctx
+            .state()
+            .db
+            .send(CreateUser { username, password })
             .wait()??;
         {
-            let mut success = self.builder
+            let mut success = self
+                .builder
                 .init_root::<response::Builder>()
                 .init_login()
                 .init_success();
             success.set_token(&Token::create(user.id)?);
-    
+
             let mut u = success.init_user();
             u.set_id(user.id);
             u.set_username(&user.username);
             u.set_karma(user.karma);
             u.set_streak(user.streak);
-        } 
+        }
 
         self.write()
     }
 
-    fn handle_request_logout(&mut self, data: Result<text::Reader, capnp::Error>, ctx: &mut WebsocketContext<Self, State>) -> Result<(), Error> {
+    fn handle_request_logout(
+        &mut self,
+        data: Result<text::Reader, capnp::Error>,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
         let token = data?;
-        ctx.state().db.send(DeleteSession { session_id: token.to_string() })
+        ctx.state()
+            .db
+            .send(DeleteSession {
+                session_id: token.to_string(),
+            })
             .wait()??;
 
-        self.builder.init_root::<response::Builder>()
+        self.builder
+            .init_root::<response::Builder>()
             .init_logout()
             .set_success(());
         self.write()

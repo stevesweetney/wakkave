@@ -1,5 +1,5 @@
-use yew::{prelude::worker::*, format};
-use yew::services::websocket::{WebSocketService, WebSocketTask, WebSocketStatus};
+use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
+use yew::{format, prelude::worker::*};
 
 // Messages from websocket service
 pub enum Msg {
@@ -53,16 +53,16 @@ impl Agent for WebSocketAgent {
     type Input = Request;
     type Output = WsResponse;
 
-     fn create(link: AgentLink<Self>) -> Self {
+    fn create(link: AgentLink<Self>) -> Self {
         let mut ws_service = WebSocketService::new();
         let ws_task = ws_service.connect(
-                "ws://127.0.0.1:8088",
-                link.send_back(|data| Msg::Data(data)),
-                link.send_back(|data| match data {
-                    WebSocketStatus::Opened => Msg::Connected,
-                    _ => Msg::Failure,
-                })
-            );
+            "ws://127.0.0.1:8088",
+            link.send_back(|data| Msg::Data(data)),
+            link.send_back(|data| match data {
+                WebSocketStatus::Opened => Msg::Connected,
+                _ => Msg::Failure,
+            }),
+        );
         Self {
             link,
             ws_task,
@@ -80,17 +80,17 @@ impl Agent for WebSocketAgent {
                         }
                     }
                 }
-            },
+            }
             Msg::Connected => {
                 for sub in &self.subscribers {
                     self.link.response(*sub, WsResponse::Connected)
                 }
-            },
-             Msg::Failure => {
+            }
+            Msg::Failure => {
                 for sub in &self.subscribers {
                     self.link.response(*sub, WsResponse::Failure)
                 }
-            },
+            }
         }
     }
 
@@ -109,6 +109,5 @@ impl Agent for WebSocketAgent {
             self.subscribers.swap(i, len - 1);
             self.subscribers.pop();
         }
-    } 
-    
+    }
 }
