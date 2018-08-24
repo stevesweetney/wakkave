@@ -90,13 +90,8 @@ impl Handler<Disconnect> for ChatServer {
             // Can swap the id and addr of the disconnecting
             // session with the last element and pop the last
             // element from the vectors
-            let len = self.session_addrs.len();
-            self.session_addrs.swap(i, len - 1);
-            self.session_addrs.pop();
-
-            let len = self.session_ids.len();
-            self.session_ids.swap(i, len - 1);
-            self.session_ids.pop();
+            self.session_addrs.swap_remove(i);
+            self.session_ids.swap_remove(i);
         }
 
         assert!(self.session_addrs.len() == self.session_ids.len());
