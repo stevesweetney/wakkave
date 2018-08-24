@@ -175,8 +175,7 @@ impl Ws {
             .chat
             .send(chatserver::Connect {
                 addr: addr.recipient(),
-            })
-            .into_actor(self)
+            }).into_actor(self)
             .then(|res, act, ctx| {
                 match res {
                     Ok(res) => act.id = Some(res),
@@ -184,8 +183,7 @@ impl Ws {
                     _ => ctx.stop(),
                 }
                 fut::ok(())
-            })
-            .wait(ctx);
+            }).wait(ctx);
     }
 
     fn handle_request_login_credentials(
@@ -203,8 +201,7 @@ impl Ws {
             .send(FindUser {
                 username: name.to_string(),
                 password: password.to_string(),
-            })
-            .wait()??;
+            }).wait()??;
 
         match user {
             Some(user) => {
@@ -213,8 +210,7 @@ impl Ws {
                     .db
                     .send(CreateSession {
                         id: Token::create(user.id)?,
-                    })
-                    .wait()??;
+                    }).wait()??;
 
                 let mut success = self
                     .builder
@@ -254,8 +250,7 @@ impl Ws {
             .send(UpdateSession {
                 old_id: token.to_string(),
                 new_id,
-            })
-            .wait()??;
+            }).wait()??;
 
         let user = ctx.state().db.send(FindUserID { user_id }).wait()??;
 
@@ -323,8 +318,7 @@ impl Ws {
             .db
             .send(DeleteSession {
                 session_id: token.to_string(),
-            })
-            .wait()??;
+            }).wait()??;
 
         self.builder
             .init_root::<response::Builder>()

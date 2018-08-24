@@ -36,10 +36,10 @@ impl Server {
                 db: db_addr.clone(),
                 chat: chat_addr.clone(),
             }).resource("/", |r| r.f(connect_ws))
-                .resource("/users/new", |r| r.f(create_user))
+            .resource("/users/new", |r| r.f(create_user))
         }).bind("127.0.0.1:8088")
-            .unwrap()
-            .start();
+        .unwrap()
+        .start();
 
         Server { runner }
     }

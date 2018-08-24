@@ -1,3 +1,5 @@
+#![recursion_limit = "128"]
+
 extern crate capnp;
 extern crate serde;
 
@@ -18,38 +20,38 @@ extern crate yew;
 #[macro_use]
 extern crate stdweb;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate actix;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate actix_web;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 #[macro_use]
 extern crate diesel;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate dotenv;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate r2d2;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate jsonwebtoken;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate uuid;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate time;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate futures;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 extern crate bcrypt;
 
-#[cfg(feature="default")]
+#[cfg(feature = "default")]
 pub mod backend;
 
 #[cfg(feature = "frontend")]
