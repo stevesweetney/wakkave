@@ -8,7 +8,7 @@ use diesel::{
 };
 use failure::Error;
 
-use super::models::{NewUser, Session, User};
+use super::models::{NewPost, NewUser, Post, Session, User, Vote};
 use backend::ServerError;
 
 pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);
@@ -96,8 +96,7 @@ impl Handler<CreateUser> for DbExecutor {
             .values(&NewUser {
                 username: msg.username,
                 password: bcrypt::hash(&msg.password, DEFAULT_COST)?,
-            })
-            .get_result::<User>(&self.0.get()?)
+            }).get_result::<User>(&self.0.get()?)
             .map_err(|_| ServerError::CreateUser.into())
     }
 }
@@ -160,5 +159,72 @@ impl Handler<FindUserID> for DbExecutor {
             Some(u) => Ok(Some(u)),
             None => Ok(None),
         }
+    }
+}
+
+pub struct CreatePost {
+    content: String,
+    user_id: i32,
+}
+
+impl Message for CreatePost {
+    type Result = Result<(Post, String), Error>;
+}
+
+impl Handler<CreatePost> for DbExecutor {
+    type Result = Result<(Post, String), Error>;
+
+    fn handle(&mut self, msg: CreatePost, _: &mut Self::Context) -> Self::Result {
+        let conn = self.0.get()?;
+        let post = {
+            use super::schema::posts::dsl::*;
+            diesel::insert_into(posts)
+                .values(&NewPost {
+                    content: msg.content.clone(),
+                    user_id: msg.user_id,
+                }).get_result::<Post>(&conn)
+                .map_err(|_| ServerError::InsertPost)?
+        };
+
+        let name = {
+            use super::schema::users::dsl::*;
+            users
+                .filter(id.eq(msg.user_id))
+                .select(username)
+                .first::<String>(&self.0.get()?)
+                .map_err(|_| ServerError::FindUser)?
+        };
+
+        Ok((post, name))
+    }
+}
+
+pub struct UserVote {
+    pub post_id: i32,
+    pub user_id: i32,
+    // 1 will represent an upvote, -1 will represent a downvote
+    pub up_or_down: i16,
+}
+
+impl Message for UserVote {
+    type Result = Result<(), Error>;
+}
+
+impl Handler<UserVote> for DbExecutor {
+    type Result = Result<(), Error>;
+
+    fn handle(&mut self, msg: UserVote, _: &mut Self::Context) -> Self::Result {
+        use super::schema::votes::dsl::*;
+        diesel::insert_into(votes)
+            .values(&Vote {
+                post_id: msg.post_id,
+                user_id: msg.user_id,
+                up_or_down: msg.up_or_down,
+            }).on_conflict((post_id, user_id))
+            .do_update()
+            .set(up_or_down.eq(msg.up_or_down))
+            .execute(&self.0.get()?)
+            .map_err(|_| ServerError::InsertVote.into())
+            .map(|_| ())
     }
 }

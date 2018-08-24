@@ -24,6 +24,9 @@ pub enum ServerError {
     #[fail(display = "unable to insert token in the database")]
     InsertToken,
 
+    #[fail(display = "unable to insert post in the database")]
+    InsertPost,
+
     #[fail(display = "unable to update token in the database")]
     UpdateToken,
 
@@ -38,6 +41,9 @@ pub enum ServerError {
 
     #[fail(display = "unable to find user in the database")]
     FindUser,
+
+    #[fail(display = "unable to insert vote in the database")]
+    InsertVote,
 
     #[fail(display = "Password is incorrect")]
     IncorrectPassword,
