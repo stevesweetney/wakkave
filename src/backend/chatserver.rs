@@ -2,12 +2,32 @@
 //! Also manages available rooms. Peers can send messages to other peers
 //! the same room through ChatServer.
 
-use actix::prelude::*;
+use super::database::{
+    executor::{DbExecutor, UpdateKarma},
+    models::{Post, User},
+};
+use actix::{fut, prelude::*};
+use capnp::{
+    self,
+    message::Builder,
+    serialize_packed,
+};
 use uuid::Uuid;
 
-// Chat Server sends messags of this type to sessions
+use protocol_capnp::{update, Vote as P_Vote};
+
+// Chat Server sends message of this type to sessions
 #[derive(Message)]
 pub struct ServerMessage(pub Vec<u8>);
+
+// Message from client that will be broadcasted
+#[derive(Message)]
+pub struct ClientMessage {
+    /// Id of client session
+    pub id: String,
+    /// Peer message
+    pub msg: Post,
+}
 
 // New chat session is created
 #[derive(Message)]
@@ -22,16 +42,62 @@ pub struct Disconnect {
     pub id: String,
 }
 
-#[derive(Default)]
 pub struct ChatServer {
     session_ids: Vec<String>,
     session_addrs: Vec<Recipient<ServerMessage>>,
+    db: Addr<DbExecutor>,
 }
 
 impl ChatServer {
+    pub fn new(addr: Addr<DbExecutor>) -> Self {
+        ChatServer {
+            session_ids: Vec::new(),
+            session_addrs: Vec::new(),
+            db: addr,
+        }
+    }
+
     fn send_message(&self, data: Vec<u8>) {
         for addr in &self.session_addrs {
             let _ = addr.do_send(ServerMessage(data.clone()));
+        }
+    }
+
+    fn send_updates(&self, (invalid, users): (Vec<Post>, Vec<User>)) {
+        let mut b = Builder::new_default();
+        let mut data = Vec::new();
+        {
+            let update = b.init_root::<update::Builder>();
+
+            let mut invalid_posts = update.init_invalid(invalid.len() as u32);
+
+            for (i, post) in invalid.iter().enumerate() {
+                invalid_posts.set(i as u32, post.id);
+            }
+        }
+
+        if let Ok(()) = serialize_packed::write_message(&mut data, &b) {
+            self.send_message(data.clone());
+        }
+
+        data.clear();
+
+        {
+            let update = b.init_root::<update::Builder>();
+
+            let mut users_to_update = update.init_users(users.len() as u32);
+
+            for (i, usr) in users.iter().enumerate() {
+                let mut u = users_to_update.reborrow().get(i as u32);
+                u.set_id(usr.id);
+                u.set_username(&usr.username);
+                u.set_karma(usr.karma);
+                u.set_streak(usr.streak);
+            }
+        }
+
+        if let Ok(()) = serialize_packed::write_message(&mut data, &b) {
+            self.send_message(data);
         }
     }
 }
@@ -39,14 +105,52 @@ impl ChatServer {
 /// Make actor from `ChatServer`
 impl Actor for ChatServer {
     type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        use std::time::Duration;
+
+        ctx.run_interval(Duration::from_secs(600), |act, ctx| {
+            let query_task = act
+                .db
+                .send(UpdateKarma)
+                .into_actor(act)
+                .timeout(Duration::from_secs(480), MailboxError::Timeout)
+                .then(|res, actor, _contx| match res {
+                    Ok(res) => {
+                        if let Ok(res) = res {
+                            actor.send_updates(res);
+                        }
+                        fut::ok(())
+                    }
+                    _ => fut::err(()),
+                });
+            ctx.spawn(query_task);
+        });
+    }
 }
 
 // Handler for Server Messages
-impl Handler<ServerMessage> for ChatServer {
+impl Handler<ClientMessage> for ChatServer {
     type Result = ();
 
-    fn handle(&mut self, msg: ServerMessage, _: &mut Context<Self>) -> Self::Result {
-        self.send_message(msg.0);
+    fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>) -> Self::Result {
+        let mut b = Builder::new_default();
+        let mut data = Vec::new();
+        {
+            let update = b.init_root::<update::Builder>();
+            let p = msg.msg;
+
+            let mut post = update.init_new_post();
+            post.set_id(p.id);
+            post.set_content(&p.content);
+            post.set_valid(p.valid);
+            post.set_user_id(p.user_id);
+            post.set_vote(P_Vote::None);
+        }
+
+        let _ = serialize_packed::write_message(&mut data, &b);
+
+        self.send_message(data);
     }
 }
 

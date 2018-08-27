@@ -29,7 +29,8 @@ impl Server {
             .build(manager)
             .expect("Failed to create pool");
         let db_addr = SyncArbiter::start(1, move || DbExecutor(pool.clone()));
-        let chat_addr = Arbiter::start(|_| ChatServer::default());
+        let db_clone = db_addr.clone();
+        let chat_addr = Arbiter::start(move |_| ChatServer::new(db_clone));
 
         server::new(move || {
             App::with_state(State {

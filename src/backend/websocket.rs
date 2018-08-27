@@ -13,13 +13,14 @@ use capnp::{
 use backend::{
     chatserver,
     database::executor::{
-        CreateSession, CreateUser, DeleteSession, FindUser, FindUserID, UpdateSession,
+        CreatePost, CreateSession, CreateUser, DeleteSession, FetchPosts, FindUser, FindUserID,
+        UpdateSession, UserVote,
     },
     token::Token,
     State,
 };
 
-use protocol_capnp::{request, response};
+use protocol_capnp::{request, response, Vote};
 
 use std::default::Default;
 
@@ -150,6 +151,48 @@ impl Ws {
                         .init_logout()
                         .set_error(&e.to_string());
                     let _ = self.write();
+                }
+
+                self.send(ctx);
+            }
+            Ok(request::FetchPosts(data)) => {
+                match self.handle_request_fetch_posts(data, ctx) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        self.builder
+                            .init_root::<response::Builder>()
+                            .init_fetch_posts()
+                            .set_error(&e.to_string());
+                        let _ = self.write();
+                    }
+                }
+
+                self.send(ctx);
+            }
+            Ok(request::CreatePost(data)) => {
+                match self.handle_request_create_post(data, ctx) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        self.builder
+                            .init_root::<response::Builder>()
+                            .init_create_post()
+                            .set_error(&e.to_string());
+                        let _ = self.write();
+                    }
+                }
+
+                self.send(ctx);
+            }
+            Ok(request::UserVote(data)) => {
+                match self.handle_request_user_vote(data, ctx) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        self.builder
+                            .init_root::<response::Builder>()
+                            .init_user_vote()
+                            .set_error(&e.to_string());
+                        let _ = self.write();
+                    }
                 }
 
                 self.send(ctx);
@@ -324,6 +367,117 @@ impl Ws {
             .init_root::<response::Builder>()
             .init_logout()
             .set_success(());
+        self.write()
+    }
+
+    fn handle_request_fetch_posts(
+        &mut self,
+        data: Result<text::Reader, capnp::Error>,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
+        let token = data?;
+        let (new_token, user_id) = Token::verify(token)?;
+        let res = ctx.state().db.send(FetchPosts { user_id }).wait()??;
+
+        {
+            let mut success = self
+                .builder
+                .init_root::<response::Builder>()
+                .init_fetch_posts()
+                .init_success();
+            success.set_token(&new_token);
+            let mut fetched_posts = success.init_posts(res.len() as u32);
+
+            for (i, (post, vote)) in res.iter().enumerate() {
+                let mut p = fetched_posts.reborrow().get(i as u32);
+                p.set_id(post.id);
+                p.set_content(&post.content);
+                p.set_valid(post.valid);
+                p.set_user_id(post.user_id);
+                let vote = match vote {
+                    None => Vote::None,
+                    Some(v) => match v.up_or_down {
+                        1 => Vote::Up,
+                        -1 => Vote::Down,
+                        _ => Vote::None,
+                    },
+                };
+                p.set_vote(vote);
+            }
+        }
+        self.write()
+    }
+
+    fn handle_request_create_post(
+        &mut self,
+        data: request::create_post::Reader,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
+        let token = data.get_token()?;
+        let content = data.get_content()?.to_string();
+
+        let (new_token, user_id) = Token::verify(token)?;
+        let (post, _username) = ctx
+            .state()
+            .db
+            .send(CreatePost { user_id, content })
+            .wait()??;
+
+        {
+            let mut success = self
+                .builder
+                .init_root::<response::Builder>()
+                .init_create_post()
+                .init_success();
+
+            success.set_token(&new_token);
+            let mut p = success.init_post();
+            p.set_id(post.id);
+            p.set_content(&post.content);
+            p.set_valid(post.valid);
+            p.set_user_id(post.user_id);
+            p.set_vote(Vote::None);
+        }
+
+        if let Some(ref id) = self.id {
+            ctx.state().chat.do_send(chatserver::ClientMessage {
+                id: id.to_owned(),
+                msg: post,
+            });
+        }
+
+        self.write()
+    }
+
+    fn handle_request_user_vote(
+        &mut self,
+        data: request::user_vote::Reader,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
+        let token = data.get_token()?;
+        let vote = data.get_vote()?;
+        let post_id = data.get_post_id();
+
+        let (new_token, user_id) = Token::verify(token)?;
+        let up_or_down = match vote {
+            Vote::Up => 1,
+            Vote::Down => 0,
+            Vote::None => return Err(super::ServerError::InvalidVote.into()),
+        };
+
+        let _ = ctx.state().db.send(UserVote {
+            post_id,
+            user_id,
+            up_or_down,
+        });
+
+        {
+            self.builder
+                .init_root::<response::Builder>()
+                .init_user_vote()
+                .set_success(&new_token);
+        }
+
         self.write()
     }
 }

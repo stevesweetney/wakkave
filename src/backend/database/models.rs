@@ -30,7 +30,7 @@ pub struct NewPost {
     pub user_id: i32,
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Identifiable)]
 pub struct Post {
     pub id: i32,
     pub content: String,
@@ -39,7 +39,9 @@ pub struct Post {
     pub user_id: i32,
 }
 
-#[derive(Insertable)]
+#[derive(Queryable, Insertable, Identifiable, Associations)]
+#[primary_key(user_id, post_id)]
+#[belongs_to(Post)]
 #[table_name = "votes"]
 pub struct Vote {
     pub post_id: i32,

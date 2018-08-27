@@ -47,4 +47,7 @@ pub enum ServerError {
 
     #[fail(display = "Password is incorrect")]
     IncorrectPassword,
+
+    #[fail(display = "Invalid Vote")]
+    InvalidVote,
 }

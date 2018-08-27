@@ -3,10 +3,13 @@ use actix_web::*;
 use bcrypt::{self, DEFAULT_COST};
 use diesel::{
     self,
+    dsl::{now, IntervalDsl},
+    pg::expression::dsl::any,
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
 use failure::Error;
+use std::cmp::Ordering;
 
 use super::models::{NewPost, NewUser, Post, Session, User, Vote};
 use backend::ServerError;
@@ -163,8 +166,8 @@ impl Handler<FindUserID> for DbExecutor {
 }
 
 pub struct CreatePost {
-    content: String,
-    user_id: i32,
+    pub content: String,
+    pub user_id: i32,
 }
 
 impl Message for CreatePost {
@@ -199,6 +202,48 @@ impl Handler<CreatePost> for DbExecutor {
     }
 }
 
+pub struct FetchPosts {
+    pub user_id: i32,
+}
+
+impl Message for FetchPosts {
+    type Result = Result<Vec<(Post, Option<Vote>)>, Error>;
+}
+
+impl Handler<FetchPosts> for DbExecutor {
+    type Result = Result<Vec<(Post, Option<Vote>)>, Error>;
+
+    fn handle(&mut self, msg: FetchPosts, _: &mut Self::Context) -> Self::Result {
+        let conn = self.0.get()?;
+        let posts_lists: Vec<Post> = {
+            use super::schema::posts::dsl::*;
+            posts.filter(valid.eq(true)).load::<Post>(&conn)?
+        };
+
+        let votes_lists: Vec<Vec<Vote>> = {
+            use super::schema::votes::dsl::*;
+            Vote::belonging_to(&posts_lists)
+                .filter(user_id.eq(msg.user_id))
+                .load::<Vote>(&conn)?
+                .grouped_by(&posts_lists)
+        };
+
+        Ok(posts_lists
+            .into_iter()
+            .zip(votes_lists)
+            .map(|(post, mut votes)| {
+                let v = {
+                    if votes.len() >= 1 {
+                        Some(votes.swap_remove(0))
+                    } else {
+                        None
+                    }
+                };
+                (post, v)
+            }).collect::<Vec<_>>())
+    }
+}
+
 pub struct UserVote {
     pub post_id: i32,
     pub user_id: i32,
@@ -226,5 +271,67 @@ impl Handler<UserVote> for DbExecutor {
             .execute(&self.0.get()?)
             .map_err(|_| ServerError::InsertVote.into())
             .map(|_| ())
+    }
+}
+
+pub struct UpdateKarma;
+
+impl Message for UpdateKarma {
+    type Result = Result<((Vec<Post>, Vec<User>)), Error>;
+}
+
+impl Handler<UpdateKarma> for DbExecutor {
+    type Result = Result<((Vec<Post>, Vec<User>)), Error>;
+
+    fn handle(&mut self, _msg: UpdateKarma, _: &mut Self::Context) -> Self::Result {
+        let conn = self.0.get()?;
+
+        let invalid_posts: Vec<Post> = {
+            use super::schema::posts::dsl::*;
+            diesel::update(posts.filter(created_at.lt(now - 61_i32.minutes())))
+                .set(valid.eq(false))
+                .get_results::<Post>(&conn)?
+        };
+
+        let mut users_to_update: Vec<User> = Vec::new();
+
+        let grouped_votes: Vec<Vec<Vote>> = Vote::belonging_to(&invalid_posts)
+            .load::<Vote>(&conn)?
+            .grouped_by(&invalid_posts);
+        for mut group in grouped_votes {
+            let (up_v, down_v): (Vec<Vote>, Vec<Vote>) =
+                group.into_iter().partition(|v| v.up_or_down == 1);
+
+            let result = up_v.len() - down_v.len();
+            let groups: Option<(Vec<Vote>, Vec<Vote>)> = match result.cmp(&0) {
+                Ordering::Greater => Some((up_v, down_v)),
+                Ordering::Less => Some((down_v, up_v)),
+                Ordering::Equal => None,
+            };
+
+            if let Some((winners, losers)) = groups {
+                use super::schema::users::dsl::*;
+
+                let losers = losers.into_iter().map(|l| l.user_id).collect::<Vec<_>>();
+
+                let mut losers = diesel::update(users.filter(id.eq(any(&losers))))
+                    .set((streak.eq(0), karma.eq(karma - 10)))
+                    .get_results::<User>(&conn)?;
+
+                users_to_update.append(&mut losers);
+
+                let winners = winners.into_iter().map(|w| w.user_id).collect::<Vec<_>>();
+
+                let mut winners = diesel::update(users.filter(id.eq(any(&winners))))
+                    .set((streak.eq(streak + 1), karma.eq(karma + 10)))
+                    .get_results::<User>(&conn)?;
+
+                users_to_update.append(&mut winners);
+            }
+        }
+
+        users_to_update.sort_unstable_by_key(|u| u.id);
+        users_to_update.dedup_by_key(|u| u.id);
+        Ok((invalid_posts, users_to_update))
     }
 }
