@@ -30,6 +30,7 @@ pub struct RootComponent {
     protocol_service: ProtocolService,
     ws_agent: Box<Bridge<WebSocketAgent>>,
     cookie_service: CookieService,
+    active: bool,
 }
 
 impl Component for RootComponent {
@@ -49,6 +50,7 @@ impl Component for RootComponent {
             protocol_service: ProtocolService::new(),
             ws_agent: WebSocketAgent::bridge(link.send_back(callback)),
             cookie_service: CookieService::new(),
+            active: true,
         }
     }
 
@@ -92,16 +94,21 @@ impl Component for RootComponent {
                     }
                     Ok(None) => false, // Not my response
                     Err(e) => {
-                        // Remote the existing cookie
-                        self.console_service.info(&format!("Login failed: {}", e));
-                        self.cookie_service.remove(SESSION_TOKEN);
-                        self.router_agent
-                            .send(Request::ChangeRoute(RouterComponent::Login.into()));
-                        true
+                        if self.active {
+                            // Remote the existing cookie
+                            self.console_service.info(&format!("Login failed: {}", e));
+                            self.cookie_service.remove(SESSION_TOKEN);
+                            self.router_agent
+                                .send(Request::ChangeRoute(RouterComponent::Login.into()));
+                            true
+                        } else {
+                            false
+                        }
                     }
                 }
             }
             Msg::HandleRoute(route) => {
+                self.active = false;
                 self.child_component = route.into();
                 true
             }
