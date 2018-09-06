@@ -378,6 +378,10 @@ impl Ws {
         let token = data?;
         let (new_token, user_id) = Token::verify(token)?;
         let res = ctx.state().db.send(FetchPosts { user_id }).wait()??;
+        ctx.state().db.do_send(UpdateSession {
+            old_id: token.to_string(),
+            new_id: new_token.clone(),
+        });
 
         {
             let mut success = self
