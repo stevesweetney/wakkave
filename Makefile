@@ -1,15 +1,24 @@
 # Compiler configuration
 GENERAL_ARGS = --release
-FRONTEND_TARGET = $(GENERAL_ARGS) --target wasm32-unknown-unknown
+FRONTEND_TARGET = --target wasm32-unknown-unknown
 FRONTEND_ARGS = $(FRONTEND_TARGET) --no-default-features --features=frontend
 BACKEND_TARGET = $(GENERAL_ARGS)
 BACKEND_ARGS = $(BACKEND_TARGET)
 
+.PHONY: \
+		checkfrontend \
+		checkbackend \
+		backend \
+		frontend \
+		flow 
+
 checkfrontend:
-	cargo check --no-default-features --features frontend
+	cargo check -p frontend
 checkbackend:
-	cargo check 
+	cargo check -p backend 
 backend:
-	cargo run --bin backend
+	cargo run -p backend --bin backend
 frontend:
-	cargo web start $(FRONTEND_ARGS) --bin frontend
+	cargo build -p frontend $(FRONTEND_TARGET)
+flow:
+	node_modules/.bin/flow check

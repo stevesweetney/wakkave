@@ -12,7 +12,7 @@ use failure::Error;
 use std::cmp::Ordering;
 
 use super::models::{NewPost, NewUser, Post, Session, User, Vote};
-use backend::ServerError;
+use ServerError;
 
 pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);
 
@@ -220,27 +220,30 @@ impl Handler<FetchPosts> for DbExecutor {
             posts.filter(valid.eq(true)).load::<Post>(&conn)?
         };
 
-        let votes_lists: Vec<Vec<Vote>> = {
+        // let votes_lists: Vec<Vec<Vote>> = {
+        //     use super::schema::votes::dsl::*;
+        //     Vote::belonging_to(&posts_lists)
+        //         .filter(user_id.eq(msg.user_id))
+        //         .load::<Vote>(&conn)?
+        //         .grouped_by(&posts_lists)
+        // };
+        {
             use super::schema::votes::dsl::*;
-            Vote::belonging_to(&posts_lists)
-                .filter(user_id.eq(msg.user_id))
-                .load::<Vote>(&conn)?
-                .grouped_by(&posts_lists)
-        };
-
-        Ok(posts_lists
+            Ok(posts_lists
             .into_iter()
-            .zip(votes_lists)
-            .map(|(post, mut votes)| {
-                let v = {
-                    if votes.len() >= 1 {
-                        Some(votes.swap_remove(0))
-                    } else {
-                        None
-                    }
+            .map(|post| {
+                let res = votes
+                    .filter(user_id.eq(msg.user_id))
+                    .filter(post_id.eq(post.id))
+                    .first::<Vote>(&conn)
+                    .optional();
+                let v = match res {
+                    Ok(v) => v,
+                    Err(_) => None,
                 };
                 (post, v)
             }).collect::<Vec<_>>())
+        }
     }
 }
 

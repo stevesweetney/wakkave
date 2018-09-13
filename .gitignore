@@ -2,3 +2,8 @@
 **/*.rs.bk
 .env
 static/css/style.css
+node_modules/
+static/*.js
+static/*.wasm
+build/
+frontend/src/yew_components

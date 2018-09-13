@@ -7,7 +7,7 @@ use capnp::{
 use protocol_capnp::{post as Post_P, request, response, update, Vote as Vote_P};
 
 use failure::Error;
-use frontend::{Post, User, Vote, WsMessage};
+use {Post, User, Vote, WsMessage, FetchedPosts, CreatedPost, UsersToUpdate, LoginResponse};
 
 #[derive(Debug, Fail)]
 pub enum ProtocolError {
@@ -166,16 +166,25 @@ impl ProtocolService {
         self.write()
     }
 
-    pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<String>, Error> {
+    pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<LoginResponse>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
 
         match response.which()? {
             response::Login(data) => match data.which()? {
                 response::login::Success(data) => {
-                    let token = data.get_token()?;
+                    let token = data.get_token()?.to_string();
                     let user = data.get_user()?;
-                    Ok(Some(token.to_owned()))
+                    let login_res = LoginResponse {
+                        token,
+                        user: User {
+                            id: user.get_id(),
+                            username: user.get_username()?.to_string(),
+                            karma: user.get_karma(),
+                            streak: user.get_streak(),
+                        }
+                    };
+                    Ok(Some(login_res))
                 }
                 response::login::Error(error) => Err(Error::from(ProtocolError::Response {
                     description: error?.to_owned(),
@@ -203,7 +212,7 @@ impl ProtocolService {
     pub fn read_response_fetch_posts(
         &self,
         mut data: &[u8],
-    ) -> Result<Option<(String, Vec<Post>)>, Error> {
+    ) -> Result<Option<FetchedPosts>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
 
@@ -223,7 +232,7 @@ impl ProtocolService {
                         })
                     }
 
-                    Ok(Some((token, posts)))
+                    Ok(Some(FetchedPosts { token, posts }))
                 }
                 response::fetch_posts::Error(error) => Err(Error::from(ProtocolError::Response {
                     description: error?.to_owned(),
@@ -236,7 +245,7 @@ impl ProtocolService {
     pub fn read_response_create_post(
         &self,
         mut data: &[u8],
-    ) -> Result<Option<(String, Post)>, Error> {
+    ) -> Result<Option<CreatedPost>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
 
@@ -253,7 +262,8 @@ impl ProtocolService {
                         vote: post.get_vote()?.into(),
                         userId: post.get_user_id(),
                     };
-                    Ok(Some((token, post)))
+                    
+                    Ok(Some(CreatedPost { token, post }))
                 }
                 response::create_post::Error(error) => Err(Error::from(ProtocolError::Response {
                     description: error?.to_owned(),
@@ -299,25 +309,25 @@ impl ProtocolService {
         }
     }
 
-    pub fn read_update_invalid(&self, mut data: &[u8]) -> Result<Option<HashSet<i32>>, Error> {
+    pub fn read_update_invalid(&self, mut data: &[u8]) -> Result<Option<Vec<i32>>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let update = reader.get_root::<update::Reader>()?;
 
         match update.which()? {
             update::Invalid(data) => {
                 let post_ids = data?;
-                let mut set = HashSet::new();
+                let mut v = Vec::new();
                 for id in post_ids.iter() {
-                    set.insert(id);
+                    v.push(id);
                 }
 
-                Ok(Some(set))
+                Ok(Some(v))
             }
             _ => Ok(None),
         }
     }
 
-    pub fn read_update_users(&self, mut data: &[u8]) -> Result<Option<Vec<User>>, Error> {
+    pub fn read_update_users(&self, mut data: &[u8]) -> Result<Option<UsersToUpdate>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let update = reader.get_root::<update::Reader>()?;
 
@@ -333,7 +343,7 @@ impl ProtocolService {
                     });
                 }
 
-                Ok(Some(users))
+                Ok(Some(UsersToUpdate { users }))
             }
             _ => Ok(None),
         }

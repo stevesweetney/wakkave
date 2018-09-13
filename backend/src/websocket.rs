@@ -10,7 +10,7 @@ use capnp::{
     serialize_packed, text,
 };
 
-use backend::{
+use {
     chatserver,
     database::executor::{
         CreatePost, CreateSession, CreateUser, DeleteSession, FetchPosts, FindUser, FindUserID,
@@ -107,6 +107,7 @@ impl Ws {
                                 .init_root::<response::Builder>()
                                 .init_login()
                                 .set_error(&e.to_string());
+                            let _ = self.write();
                             println!("Error: {:?}", e);
                         }
                     }
@@ -192,6 +193,7 @@ impl Ws {
                             .init_user_vote()
                             .set_error(&e.to_string());
                         let _ = self.write();
+                        println!("Error: {:?}", e);
                     }
                 }
 
@@ -426,6 +428,11 @@ impl Ws {
             .db
             .send(CreatePost { user_id, content })
             .wait()??;
+        
+        ctx.state().db.do_send(UpdateSession {
+            old_id: token.to_string(),
+            new_id: new_token.clone(),
+        });
 
         {
             let mut success = self
@@ -465,7 +472,7 @@ impl Ws {
         let (new_token, user_id) = Token::verify(token)?;
         let up_or_down = match vote {
             Vote::Up => 1,
-            Vote::Down => 0,
+            Vote::Down => -1,
             Vote::None => return Err(super::ServerError::InvalidVote.into()),
         };
 
@@ -473,7 +480,7 @@ impl Ws {
             post_id,
             user_id,
             up_or_down,
-        });
+        }).wait()??;
 
         {
             self.builder

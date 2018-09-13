@@ -1,0 +1,16 @@
+[package]
+name = "frontend"
+version = "0.1.0"
+authors = ["Steve Sweetney <stevesweetney@gmail.com>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+lazy_static = "1.0.2"
+failure = "0.1.1"
+serde = "1.0.70"
+serde_derive = "1.0.70"
+capnp = "0.8.17"
+wakkave = { path = ".." }
+wasm-bindgen = { version = "0.2",features = ["serde-serialize"]}

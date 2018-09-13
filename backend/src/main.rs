@@ -1,8 +1,8 @@
 extern crate dotenv;
-extern crate wakkave;
+extern crate backend;
 
 use dotenv::dotenv;
-use wakkave::backend::server::Server;
+use backend::server::Server;
 
 fn main() {
     dotenv().ok();

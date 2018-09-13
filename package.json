@@ -1,0 +1,44 @@
+{
+  "name": "wakkave",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-wasm": "cargo build -p frontend --target wasm32-unknown-unknown --release",
+    "build-bindgen": "wasm-bindgen target/wasm32-unknown-unknown/release/frontend.wasm --out-dir build",
+    "build": "npm run build-wasm && npm run build-bindgen && npm run build-opt && npx webpack",
+    "build-wasm-debug": "cargo build -p frontend --target wasm32-unknown-unknown",
+    "build-bindgen-debug": "wasm-bindgen target/wasm32-unknown-unknown/debug/frontend.wasm --out-dir build",
+    "build-debug": "npm run build-wasm-debug && npm run build-bindgen-debug && npx webpack",
+    "serve": "webpack-dev-server",
+    "build-opt": "wasm-opt ./build/frontend_bg.wasm -o ./build/frontend_bg.wasm"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "js-cookie": "^2.2.0",
+    "react": "^16.5.0",
+    "react-dom": "^16.5.0",
+    "react-router-dom": "^4.3.1",
+    "sockette": "^2.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.0.0",
+    "@babel/plugin-syntax-dynamic-import": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
+    "@babel/preset-flow": "^7.0.0",
+    "@babel/preset-react": "^7.0.0",
+    "babel-loader": "^8.0.2",
+    "babel-plugin-syntax-dynamic-import": "^6.18.0",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-flow": "^6.23.0",
+    "babel-preset-react": "^6.24.1",
+    "flow-bin": "^0.80.0",
+    "webpack": "^4.17.2",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.8"
+  }
+}
