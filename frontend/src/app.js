@@ -165,6 +165,18 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
     }
   }
 
+  handle_logout = () => {
+    let token = Cookies.get(SESSION_TOKEN);
+    if (token) {
+        console.log("Logout request to server");
+        let data = this.props.protocolService.write_logout_token(token);
+        if (data) {
+            console.log("logout message converted to binary: ", data);
+            this.state.ws.send(data);
+        }
+    }
+  }
+
   create_post_request = (message: string) => {
     let token = Cookies.get(SESSION_TOKEN);
     if (token) {
@@ -217,6 +229,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
             fetchPosts={this.fetch_posts}
             createPostRequest={this.create_post_request}
             voteRequest={this.vote_request}
+            logoutRequest={this.handle_logout}
              />
           </div>
       </Router>
@@ -231,15 +244,18 @@ const Error = () => (
   </div>
 )
 
-const PrivateRoute = ({ component: Component, isAuth, fetchPosts, posts, createPostRequest, voteRequest, ...rest }) => (
-  <Route {...rest} render={(props) => (
-    isAuth === true
-      ? <Component {...props} 
-        fetchPosts={fetchPosts} posts={posts} 
-        createPostRequest={createPostRequest}
-        voteRequest={voteRequest} />
-      : <Redirect to='/' />
-  )} />
+const PrivateRoute = ({ component: Component, 
+    isAuth, fetchPosts, posts, createPostRequest, 
+    voteRequest, logoutRequest, ...rest }) => (
+        <Route {...rest} render={(props) => (
+            isAuth === true
+            ? <Component {...props} 
+                fetchPosts={fetchPosts} posts={posts} 
+                createPostRequest={createPostRequest}
+                voteRequest={voteRequest}
+                logoutRequest={logoutRequest} />
+            : <Redirect to='/' />
+        )} />
 )
 
 

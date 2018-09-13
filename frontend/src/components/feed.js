@@ -14,6 +14,7 @@ type Props = {
     fetchPosts: () => void,
     createPostRequest: (content: string) => void,
     voteRequest: (n: number, vote: Vote) => void,
+    logoutRequest: () => void,
 };
 
 export default class Feed extends React.Component<Props, State> {
@@ -74,6 +75,10 @@ export default class Feed extends React.Component<Props, State> {
     render() {
         return (
             <div className="uk-container">
+                <button className="uk-button uk-button-default uk-position-top-right"
+                onClick={this.props.logoutRequest}>
+                Logout
+                </button>
                 <p>{"Your feed will appear here"}</p>
                 {this.render_posts()}
                 {this.render_form()}
