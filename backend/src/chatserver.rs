@@ -14,11 +14,11 @@ use capnp::{
 };
 use uuid::Uuid;
 
-use protocol_capnp::{update, Vote as P_Vote};
+use protocol_capnp::{response, update, Vote as P_Vote};
 
 // Chat Server sends message of this type to sessions
 #[derive(Message)]
-pub struct ServerMessage(pub Vec<u8>);
+pub struct ServerMessage(pub Vec<u8>, pub Option<String>);
 
 // Message from client that will be broadcasted
 #[derive(Message)]
@@ -57,9 +57,10 @@ impl ChatServer {
         }
     }
 
-    fn send_message(&self, data: Vec<u8>) {
+    fn send_message(&self, data: Vec<u8>, skip: Option<String>) {
         for addr in &self.session_addrs {
-            let _ = addr.do_send(ServerMessage(data.clone()));
+            println!("Server message sent to session!");
+            let _ = addr.do_send(ServerMessage(data.clone(), skip.clone()));
         }
     }
 
@@ -67,7 +68,7 @@ impl ChatServer {
         let mut b = Builder::new_default();
         let mut data = Vec::new();
         {
-            let update = b.init_root::<update::Builder>();
+            let update = b.init_root::<response::Builder>().init_update();
 
             let mut invalid_posts = update.init_invalid(invalid.len() as u32);
 
@@ -77,13 +78,13 @@ impl ChatServer {
         }
 
         if let Ok(()) = serialize_packed::write_message(&mut data, &b) {
-            self.send_message(data.clone());
+            self.send_message(data.clone(), None);
         }
 
         data.clear();
 
         {
-            let update = b.init_root::<update::Builder>();
+            let update = b.init_root::<response::Builder>().init_update();
 
             let mut users_to_update = update.init_users(users.len() as u32);
 
@@ -97,7 +98,7 @@ impl ChatServer {
         }
 
         if let Ok(()) = serialize_packed::write_message(&mut data, &b) {
-            self.send_message(data);
+            self.send_message(data, None);
         }
     }
 }
@@ -137,7 +138,7 @@ impl Handler<ClientMessage> for ChatServer {
         let mut b = Builder::new_default();
         let mut data = Vec::new();
         {
-            let update = b.init_root::<update::Builder>();
+            let update = b.init_root::<response::Builder>().init_update();
             let p = msg.msg;
 
             let mut post = update.init_new_post();
@@ -150,7 +151,7 @@ impl Handler<ClientMessage> for ChatServer {
 
         let _ = serialize_packed::write_message(&mut data, &b);
 
-        self.send_message(data);
+        self.send_message(data, Some(msg.id));
     }
 }
 

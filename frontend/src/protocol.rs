@@ -37,24 +37,19 @@ impl ProtocolService {
 
     pub fn which_message(mut data: &[u8]) -> Result<WsMessage, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
-        let response = reader.get_root::<response::Reader>();
+        let response = reader.get_root::<response::Reader>()?;
 
         // Check to see first to see if the data is a response message or an update
-        let res = match response {
-            Ok(response) => match response.which()? {
-                response::Login(_) => WsMessage::Login,
-                response::Logout(_) => WsMessage::Logout,
-                response::FetchPosts(_) => WsMessage::FetchPosts,
-                response::CreatePost(_) => WsMessage::CreatePost,
-                response::UserVote(_) => WsMessage::UserVote,
-            },
-            Err(_) => {
-                let update = reader.get_root::<update::Reader>()?;
-                match update.which()? {
-                    update::Invalid(_) => WsMessage::InvalidPosts,
-                    update::NewPost(_) => WsMessage::NewPost,
-                    update::Users(_) => WsMessage::UpdateUsers,
-                }
+        let res = match response.which()? {
+            response::Login(_) => WsMessage::Login,
+            response::Logout(_) => WsMessage::Logout,
+            response::FetchPosts(_) => WsMessage::FetchPosts,
+            response::CreatePost(_) => WsMessage::CreatePost,
+            response::UserVote(_) => WsMessage::UserVote,
+            response::Update(data) => match data?.which()? {
+                update::Invalid(_) => WsMessage::InvalidPosts,
+                update::Users(_) => WsMessage::UpdateUsers,
+                update::NewPost(_) => WsMessage::NewPost,
             }
         };
 
@@ -290,20 +285,23 @@ impl ProtocolService {
 
     pub fn read_update_new_post(&self, mut data: &[u8]) -> Result<Option<Post>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
-        let update = reader.get_root::<update::Reader>()?;
+        let response = reader.get_root::<response::Reader>()?;
 
-        match update.which()? {
-            update::NewPost(data) => {
-                let post = data?;
-                let post = Post {
-                    id: post.get_id(),
-                    content: post.get_content()?.to_string(),
-                    valid: post.get_valid(),
-                    vote: post.get_vote()?.into(),
-                    userId: post.get_user_id(),
-                };
+        match response.which()? {
+            response::Update(data) => match data?.which()? {
+                update::NewPost(data) => {
+                    let post = data?;
+                    let post = Post {
+                        id: post.get_id(),
+                        content: post.get_content()?.to_string(),
+                        valid: post.get_valid(),
+                        vote: post.get_vote()?.into(),
+                        userId: post.get_user_id(),
+                    };
 
-                Ok(Some(post))
+                    Ok(Some(post))
+                },
+                _ => Ok(None)
             }
             _ => Ok(None),
         }
@@ -311,17 +309,20 @@ impl ProtocolService {
 
     pub fn read_update_invalid(&self, mut data: &[u8]) -> Result<Option<Vec<i32>>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
-        let update = reader.get_root::<update::Reader>()?;
+        let response = reader.get_root::<response::Reader>()?;
 
-        match update.which()? {
-            update::Invalid(data) => {
-                let post_ids = data?;
-                let mut v = Vec::new();
-                for id in post_ids.iter() {
-                    v.push(id);
-                }
+        match response.which()? {
+            response::Update(data) => match data?.which()? {
+                update::Invalid(data) => {
+                    let post_ids = data?;
+                    let mut v = Vec::new();
+                    for id in post_ids.iter() {
+                        v.push(id);
+                    }
 
-                Ok(Some(v))
+                    Ok(Some(v))
+                },
+                _ => Ok(None)
             }
             _ => Ok(None),
         }
@@ -329,21 +330,24 @@ impl ProtocolService {
 
     pub fn read_update_users(&self, mut data: &[u8]) -> Result<Option<UsersToUpdate>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
-        let update = reader.get_root::<update::Reader>()?;
+        let response = reader.get_root::<response::Reader>()?;
 
-        match update.which()? {
-            update::Users(data) => {
-                let mut users = Vec::new();
-                for user in data?.iter() {
-                    users.push(User {
-                        id: user.get_id(),
-                        username: user.get_username()?.to_string(),
-                        karma: user.get_karma(),
-                        streak: user.get_streak(),
-                    });
-                }
+        match response.which()? {
+            response::Update(data) => match data?.which()? {
+                update::Users(data) => {
+                    let mut users = Vec::new();
+                    for user in data?.iter() {
+                        users.push(User {
+                            id: user.get_id(),
+                            username: user.get_username()?.to_string(),
+                            karma: user.get_karma(),
+                            streak: user.get_streak(),
+                        });
+                    }
 
-                Ok(Some(UsersToUpdate { users }))
+                    Ok(Some(UsersToUpdate { users }))
+                },
+                _ => Ok(None)
             }
             _ => Ok(None),
         }

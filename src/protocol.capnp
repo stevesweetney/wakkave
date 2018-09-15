@@ -64,6 +64,8 @@ struct Response {
             success @11 :Text; # Session Token
             error @12 :Text;
         }
+
+        update @13 :Update;
     }
 }
 

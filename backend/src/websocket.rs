@@ -59,7 +59,14 @@ impl Handler<chatserver::ServerMessage> for Ws {
     type Result = ();
 
     fn handle(&mut self, msg: chatserver::ServerMessage, ctx: &mut Self::Context) {
-        ctx.binary(msg.0);
+        if let Some(ref id) = msg.1 {
+            if (id != self.id.as_ref().unwrap()) {
+                ctx.binary(msg.0);
+            }
+        } else {
+            println!("Sending binary message through websocket from server");
+            ctx.binary(msg.0);
+        }
     }
 }
 

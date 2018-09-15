@@ -236,3 +236,91 @@ impl From<Vote_P> for Vote {
 #[fail(display = "Invalid Request")]
 pub struct InvalidRequest;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use capnp::{
+        message::{Builder, HeapAllocator, ReaderOptions},
+        serialize_packed,
+    };
+    use protocol_capnp::{
+        post as Post_P, request, response, update, Vote as Vote_P
+    };
+    use {
+        Post, User, Vote, WsMessage, FetchedPosts, 
+        CreatedPost, UsersToUpdate, LoginResponse
+    };
+
+    use std::time::SystemTime;
+
+    #[test]
+    fn message_type() {
+        let protocol_service = ProtocolInterface::new();
+        let mut b = Builder::new_default();
+        let mut data = Vec::new();
+        {
+            let update = b.init_root::<response::Builder>().init_update();
+
+            let mut post = update.init_new_post();
+            post.set_id(2);
+            post.set_content("Hello from steve!");
+            post.set_valid(true);
+            post.set_user_id(2);
+            post.set_vote(Vote_P::None);
+        }
+
+        let _ = serialize_packed::write_message(&mut data, &b);
+        let boxed_data = data.into_boxed_slice();
+
+        assert_eq!(WsMessage::NewPost, protocol_service.response_type(boxed_data));
+    }
+
+    #[test]
+    fn message_type_2() {
+        let protocol_service = ProtocolInterface::new();
+        let mut b = Builder::new_default();
+        let mut data = Vec::new();
+        {
+            let invalid: Vec<i32> = (0..1000).collect();
+            let update = b.init_root::<response::Builder>().init_update();
+
+            let mut invalid_posts = update.init_invalid(invalid.len() as u32);
+
+            for (i, n) in invalid.iter().enumerate() {
+                invalid_posts.set(i as u32, *n);
+            }
+        }
+
+        let _ = serialize_packed::write_message(&mut data, &b);
+        let boxed_data = data.into_boxed_slice();
+
+        assert_eq!(WsMessage::InvalidPosts, protocol_service.response_type(boxed_data));
+    }
+
+    #[test]
+    fn message_type_3() {
+        let protocol_service = ProtocolInterface::new();
+        let mut b = Builder::new_default();
+        let mut data = Vec::new();
+        {
+            let mut success = b
+                .init_root::<response::Builder>()
+                .init_create_post()
+                .init_success();
+
+            success.set_token("new_token");
+            let mut p = success.init_post();
+            p.set_id(2);
+            p.set_content("&post.content");
+            p.set_valid(true);
+            p.set_user_id(1);
+            p.set_vote(Vote_P::None);
+        }
+
+        let _ = serialize_packed::write_message(&mut data, &b);
+        let boxed_data = data.into_boxed_slice();
+
+        assert_eq!(WsMessage::CreatePost, protocol_service.response_type(boxed_data));
+    }
+}
+
