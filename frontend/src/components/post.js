@@ -1,7 +1,6 @@
 /* @flow */
 
 import * as React from 'react';
-import ReactDOM from 'react-dom';
 import { Vote } from '../../../build/frontend';
 
 type State = {
@@ -17,71 +16,77 @@ type Props = {
 }
 
 export default class UserPost extends React.Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
 
-    constructor(props: Props) {
-        super(props);
+    let v;
 
-        var v;
-
-        if (this.props.vote === "Up") {
-            v = Vote.Up
-        } else if (this.props.vote == "Down") {
-            v = Vote.Down
-        } else {
-            v = Vote.None
-        }
-
-        this.state = {
-            vote: v,
-        }
+    if (this.props.vote === 'Up') {
+      v = Vote.Up;
+    } else if (this.props.vote === 'Down') {
+      v = Vote.Down;
+    } else {
+      v = Vote.None;
     }
 
+    this.state = {
+      vote: v,
+    };
+  }
+
     handle_vote = (vote: Vote) => {
-        if (this.state.vote !== vote) {
-            this.props.onVote(this.props.id, vote);
-            this.setState({ vote });
-            console.debug("Debugging vote", vote);
-        }   
+      if (this.state.vote !== vote) {
+        this.props.onVote(this.props.id, vote);
+        this.setState({ vote });
+        console.debug('Debugging vote', vote);
+      }
     }
 
     handle_downvote = () => {
-        this.handle_vote(Vote.Down)
+      this.handle_vote(Vote.Down);
     }
 
     handle_upvote = () => {
-        this.handle_vote(Vote.Up)
+      this.handle_vote(Vote.Up);
     }
 
     get_style = (vote: Vote) => {
-        if (this.state.vote === vote) { 
-            return ({ color: "orange" }) 
-        } else { 
-            return ({ color: "#999"}) 
-        }
+      if (this.state.vote === vote) {
+        return ({ color: '#f45b69' });
+      }
+      return ({ color: '#999' });
     }
 
-    get_style_up = () => {
-        return this.get_style(Vote.Up)
-    }
+    get_style_up = () => this.get_style(Vote.Up)
 
-    get_style_down = () => {
-        return this.get_style(Vote.Down)
-    }
+    get_style_down = () => this.get_style(Vote.Down)
 
-    render() {  
-        return (
-            <li>
-                <div className="uk-flex-inline uk-flex-column">
-                    <span uk-icon="icon: arrow-up"
-                        onClick={this.handle_upvote}
-                        style={this.get_style_up()}></span>
-                    <span uk-icon="icon: arrow-down"
-                        onClick={this.handle_downvote}
-                        style={this.get_style_down()}></span>
-                </div>
-                {this.props.content}
-            </li>
-        )
+    render() {
+      let bgColor = this.props.isMine ? "#1e87f0" : "#e3e3e3";
+      let color = this.props.isMine ? "#fff" : "#361f27";
+      let messageStyle = {
+        color, 
+        padding: "5px 5px 5px 5px",
+        backgroundColor: bgColor
+      };
+      return (
+        <li className="uk-flex uk-flex-left uk-flex-stretch uk-flex-row">
+          <div className="uk-flex-inline uk-flex-column">
+            <span
+              uk-icon="icon: arrow-up"
+              onClick={this.handle_upvote}
+              style={this.get_style_up()}
+              role="button"
+            />
+            <span
+              uk-icon="icon: arrow-down"
+              onClick={this.handle_downvote}
+              style={this.get_style_down()}
+              role="button"
+            />
+          </div>
+          <span className="uk-border-rounded" style={messageStyle}>{this.props.content}</span>
+        </li>
+      );
     }
-        
 }
