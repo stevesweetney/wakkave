@@ -179,7 +179,28 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
           }));
         }
         break; }
-      case WsMessage.UpdateUsers:
+      case WsMessage.UpdateUsers: {
+        const updated_users = protocolService.read_update_users(data);
+        if (updated_users) {
+          console.log('Recieving updated users: ', updated_users);
+
+          this.setState((prevState) => {
+            const { user } = prevState;
+            const user_update = updated_users.users.find(u => u.id === user.id);
+
+            const karma_change = user_update.karma - user.karma;
+            if (karma_change > 0) {
+              UIkit.notification(`Gained ${karma_change} karma!`);
+            } else if (karma_change < 0) {
+              UIkit.notification(`Loss ${karma_change} karma`);
+            }
+
+            return { user: user_update };
+          });
+        }
+
+
+        break; }
       case WsMessage.Error:
       default:
     }
