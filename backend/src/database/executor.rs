@@ -291,7 +291,9 @@ impl Handler<UpdateKarma> for DbExecutor {
 
         let invalid_posts: Vec<Post> = {
             use super::schema::posts::dsl::*;
-            diesel::update(posts.filter(created_at.lt(now - 61_i32.minutes())))
+            diesel::update(posts
+                .filter(created_at.lt(now - 61_i32.minutes()))
+                .filter(valid.eq(true)))
                 .set(valid.eq(false))
                 .get_results::<Post>(&conn)?
         };
@@ -305,8 +307,7 @@ impl Handler<UpdateKarma> for DbExecutor {
             let (up_v, down_v): (Vec<Vote>, Vec<Vote>) =
                 group.into_iter().partition(|v| v.up_or_down == 1);
 
-            let result = up_v.len() - down_v.len();
-            let groups: Option<(Vec<Vote>, Vec<Vote>)> = match result.cmp(&0) {
+            let groups: Option<(Vec<Vote>, Vec<Vote>)> = match up_v.len().cmp(&down_v.len()) {
                 Ordering::Greater => Some((up_v, down_v)),
                 Ordering::Less => Some((down_v, up_v)),
                 Ordering::Equal => None,
