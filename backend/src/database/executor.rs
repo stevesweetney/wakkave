@@ -237,11 +237,7 @@ impl Handler<FetchPosts> for DbExecutor {
                     .filter(post_id.eq(post.id))
                     .first::<Vote>(&conn)
                     .optional();
-                let v = match res {
-                    Ok(v) => v,
-                    Err(_) => None,
-                };
-                (post, v)
+                (post, res.unwrap_or(None))
             }).collect::<Vec<_>>())
         }
     }
