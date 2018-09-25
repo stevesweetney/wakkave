@@ -1,6 +1,7 @@
 /* @flow */
 
 import * as React from 'react';
+import { List, AutoSizer } from "react-virtualized";
 import UserPost from './post';
 import { Vote } from '../../../build/frontend';
 
@@ -37,20 +38,36 @@ export default class Feed extends React.Component<Props, State> {
     this.props.fetchPosts();
   }
 
-    render_posts = () => (
-      <ul className="uk-list uk-list-divider">
-        {this.props.posts.map(p => (
-          <UserPost
-            key={p.id}
-            id={p.id}
-            content={p.content}
-            isMine={this.props.user.id === p.userId}
-            vote={p.vote}
-            onVote={this.props.voteRequest}
-          />
-        ))}
-      </ul>
+  render_row = ({ index, key, style }) => {
+    const p = this.props.posts[index];
+    return (
+      <div style={style} key={key}>
+        <UserPost
+          key={p.id}
+          id={p.id}
+          content={p.content}
+          isMine={this.props.user.id === p.userId}
+          vote={p.vote}
+          onVote={this.props.voteRequest} 
+        />
+      </div>
     )
+  }
+
+
+  render_posts = () => (
+    <AutoSizer>
+      {({ width, height }) => (
+        <List 
+          width={width}
+          height={height}
+          rowHeight={50}
+          rowRenderer={this.render_row}
+          rowCount={this.props.posts.length}
+        />
+      )}
+    </AutoSizer>
+  )
 
     update_username = (event: SyntheticInputEvent<>) => {
       this.setState({ message: event.target.value });
@@ -98,9 +115,14 @@ export default class Feed extends React.Component<Props, State> {
           >
                 Logout
           </button>
+          <p>Karma: {this.props.user.karma}!</p>
           <p>Welcome {this.props.user.username}!</p>
-          {this.render_posts()}
-          {this.render_form()}
+          <div className="uk-flex uk-flex-column" style={{height: "400px"}}>
+            <div className="uk-flex-1">
+              {this.render_posts()}
+            </div>
+            {this.render_form()}
+          </div>
         </div>
       );
     }
