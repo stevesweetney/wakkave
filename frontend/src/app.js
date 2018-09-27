@@ -188,14 +188,18 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
             const { user } = prevState;
             const user_update = updated_users.users.find(u => u.id === user.id);
 
-            const karma_change = user_update.karma - user.karma;
-            if (karma_change > 0) {
-              UIkit.notification(`Gained ${karma_change} karma!`);
-            } else if (karma_change < 0) {
-              UIkit.notification(`Loss ${karma_change} karma`);
-            }
+            if (user_update) {
+              const karma_change = user_update.karma - user.karma;
+              if (karma_change > 0) {
+                UIkit.notification(`Gained ${karma_change} karma!`);
+              } else if (karma_change < 0) {
+                UIkit.notification(`Loss ${karma_change} karma`);
+              }
 
-            return { user: user_update };
+              return { user: user_update };
+            } else {
+              return null;
+            }
           });
         }
 
