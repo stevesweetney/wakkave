@@ -7,14 +7,10 @@ use super::database::{
     models::{Post, User},
 };
 use actix::{fut, prelude::*};
-use capnp::{
-    self,
-    message::Builder,
-    serialize_packed,
-};
+use capnp::{message::Builder, serialize_packed};
 use uuid::Uuid;
 
-use protocol_capnp::{response, update, Vote as P_Vote};
+use protocol_capnp::{response, Vote as P_Vote};
 
 // Chat Server sends message of this type to sessions
 #[derive(Message)]
@@ -57,10 +53,10 @@ impl ChatServer {
         }
     }
 
-    fn send_message(&self, data: Vec<u8>, skip: Option<String>) {
+    fn send_message(&self, data: &[u8], skip: &Option<String>) {
         for addr in &self.session_addrs {
             println!("Server message sent to session!");
-            let _ = addr.do_send(ServerMessage(data.clone(), skip.clone()));
+            let _ = addr.do_send(ServerMessage(data.to_vec(), skip.clone()));
         }
     }
 
@@ -78,7 +74,7 @@ impl ChatServer {
         }
 
         if let Ok(()) = serialize_packed::write_message(&mut data, &b) {
-            self.send_message(data.clone(), None);
+            self.send_message(&data, &None);
         }
 
         data.clear();
@@ -98,7 +94,7 @@ impl ChatServer {
         }
 
         if let Ok(()) = serialize_packed::write_message(&mut data, &b) {
-            self.send_message(data, None);
+            self.send_message(&data, &None);
         }
     }
 }
@@ -151,7 +147,7 @@ impl Handler<ClientMessage> for ChatServer {
 
         let _ = serialize_packed::write_message(&mut data, &b);
 
-        self.send_message(data, Some(msg.id));
+        self.send_message(&data, &Some(msg.id));
     }
 }
 

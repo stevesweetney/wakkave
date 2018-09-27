@@ -1,8 +1,8 @@
-extern crate dotenv;
 extern crate backend;
+extern crate dotenv;
 
-use dotenv::dotenv;
 use backend::server::Server;
+use dotenv::dotenv;
 
 fn main() {
     dotenv().ok();

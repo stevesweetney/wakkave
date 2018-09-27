@@ -230,15 +230,15 @@ impl Handler<FetchPosts> for DbExecutor {
         {
             use super::schema::votes::dsl::*;
             Ok(posts_lists
-            .into_iter()
-            .map(|post| {
-                let res = votes
-                    .filter(user_id.eq(msg.user_id))
-                    .filter(post_id.eq(post.id))
-                    .first::<Vote>(&conn)
-                    .optional();
-                (post, res.unwrap_or(None))
-            }).collect::<Vec<_>>())
+                .into_iter()
+                .map(|post| {
+                    let res = votes
+                        .filter(user_id.eq(msg.user_id))
+                        .filter(post_id.eq(post.id))
+                        .first::<Vote>(&conn)
+                        .optional();
+                    (post, res.unwrap_or(None))
+                }).collect::<Vec<_>>())
         }
     }
 }
@@ -287,11 +287,12 @@ impl Handler<UpdateKarma> for DbExecutor {
 
         let invalid_posts: Vec<Post> = {
             use super::schema::posts::dsl::*;
-            diesel::update(posts
-                .filter(created_at.lt(now - 61_i32.minutes()))
-                .filter(valid.eq(true)))
-                .set(valid.eq(false))
-                .get_results::<Post>(&conn)?
+            diesel::update(
+                posts
+                    .filter(created_at.lt(now - 61_i32.minutes()))
+                    .filter(valid.eq(true))
+            ).set(valid.eq(false))
+            .get_results::<Post>(&conn)?
         };
 
         let mut users_to_update: Vec<User> = Vec::new();

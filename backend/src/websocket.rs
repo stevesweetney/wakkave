@@ -60,7 +60,7 @@ impl Handler<chatserver::ServerMessage> for Ws {
 
     fn handle(&mut self, msg: chatserver::ServerMessage, ctx: &mut Self::Context) {
         if let Some(ref id) = msg.1 {
-            if (id != self.id.as_ref().unwrap()) {
+            if id != self.id.as_ref().unwrap() {
                 ctx.binary(msg.0);
             }
         } else {
@@ -435,7 +435,7 @@ impl Ws {
             .db
             .send(CreatePost { user_id, content })
             .wait()??;
-        
+
         ctx.state().db.do_send(UpdateSession {
             old_id: token.to_string(),
             new_id: new_token.clone(),
@@ -483,11 +483,13 @@ impl Ws {
             Vote::None => return Err(super::ServerError::InvalidVote.into()),
         };
 
-        let _ = ctx.state().db.send(UserVote {
-            post_id,
-            user_id,
-            up_or_down,
-        }).wait()??;
+        ctx.state()
+            .db
+            .send(UserVote {
+                post_id,
+                user_id,
+                up_or_down,
+            }).wait()??;
 
         {
             self.builder
