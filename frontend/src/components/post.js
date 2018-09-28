@@ -62,12 +62,12 @@ export default class UserPost extends React.Component<Props, State> {
     get_style_down = () => this.get_style(Vote.Down)
 
     render() {
-      let bgColor = this.props.isMine ? "#1e87f0" : "#e3e3e3";
-      let color = this.props.isMine ? "#fff" : "#361f27";
-      let messageStyle = {
-        color, 
-        padding: "5px 5px 5px 5px",
-        backgroundColor: bgColor
+      const bgColor = this.props.isMine ? '#1e87f0' : '#e3e3e3';
+      const color = this.props.isMine ? '#fff' : '#361f27';
+      const messageStyle = {
+        color,
+        padding: '5px 5px 5px 5px',
+        backgroundColor: bgColor,
       };
       return (
         <li className="uk-flex uk-flex-left uk-flex-stretch uk-flex-row">

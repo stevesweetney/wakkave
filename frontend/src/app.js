@@ -193,13 +193,12 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
               if (karma_change > 0) {
                 UIkit.notification(`Gained ${karma_change} karma!`);
               } else if (karma_change < 0) {
-                UIkit.notification(`Loss ${karma_change} karma`);
+                UIkit.notification(`Loss ${Math.abs(karma_change)} karma`);
               }
 
               return { user: user_update };
-            } else {
-              return null;
             }
+            return null;
           });
         }
 
