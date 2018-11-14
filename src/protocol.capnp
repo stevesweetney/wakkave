@@ -26,6 +26,7 @@ struct Request {
             vote @10 :Vote;
             postId @11 :Int32;
         }
+        connectToChat @12 :Text; # Session Token
     }
 }
 
@@ -66,6 +67,11 @@ struct Response {
         }
 
         update @13 :Update;
+
+        connectToChat :union {
+            success @14 :Void;
+            error @15 :Void;
+        }
     }
 }
 

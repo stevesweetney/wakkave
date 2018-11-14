@@ -206,6 +206,17 @@ impl Ws {
 
                 self.send(ctx);
             }
+            Ok(request::ConnectToChat(data)) => {
+                if let Err(e) = self.handle_request_connect_to_chat(data, ctx) {
+                    self.builder
+                        .init_root::<response::Builder>()
+                        .init_connect_to_chat()
+                        .set_error(());
+                    let _ = self.write();
+                }
+
+                self.send(ctx);
+            }
             Err(::capnp::NotInSchema(_)) => (),
         }
     }
@@ -500,4 +511,21 @@ impl Ws {
 
         self.write()
     }
+
+    fn handle_request_connect_to_chat(
+        &mut self,
+        data: Result<text::Reader, capnp::Error>,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
+        let token = data?;
+        self.connect_to_chat(ctx);
+
+        self.builder
+            .init_root::<response::Builder>()
+            .init_connect_to_chat()
+            .set_success(());
+        self.write()
+    }
+
+    
 }

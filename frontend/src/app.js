@@ -13,6 +13,7 @@ import Login from './components/login';
 import Feed from './components/feed';
 
 import { ProtocolInterface, WsMessage, Vote } from '../../build/frontend';
+import { throws } from 'assert';
 
 const SESSION_TOKEN: string = 'SessionToken';
 
@@ -37,18 +38,19 @@ type State = {
 class App extends React.Component<{protocolService: ProtocolInterface}, State> {
   constructor(props) {
     super(props);
-    const ws = new Sockette('ws://127.0.0.1:8088', {
-      timeout: 5e3,
-      maxAttempts: 10,
-      onopen: this.handle_on_open,
-      onmessage: this.handle_message,
-      onreconnect: e => console.log('Reconnecting...', e),
-      onmaximum: e => console.log('Stop Attempting!', e),
-      onclose: e => console.log('Closed!', e),
-      onerror: e => console.log('Error:', e),
-    });
+    // const ws = new Sockette('ws://127.0.0.1:80/login', {
+    //   timeout: 5e3,
+    //   maxAttempts: 10,
+    //   onopen: this.handle_on_open,
+    //   onmessage: this.handle_message,
+    //   onreconnect: e => console.log('Reconnecting...', e),
+    //   onmaximum: e => console.log('Stop Attempting!', e),
+    //   onclose: e => console.log('Closed!', e),
+    //   onerror: e => console.log('Error:', e),
+    // });
+
     this.state = {
-      ws,
+      ws: null,
       is_authenticated: false,
       is_loading: true,
       is_connected: false,
@@ -62,20 +64,61 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
     };
   }
 
-  handle_on_open = (e) => {
-    e.target.binaryType = 'arraybuffer';
-    this.setState({ is_loading: false, is_connected: true });
+  componentDidMount() {
     const token = Cookies.get(SESSION_TOKEN);
     console.log(token);
 
     if (token) {
       const token_data = this.props.protocolService.write_login_token(token);
-      console.log(token_data);
-      this.state.ws.send(token_data);
+      console.log("Logging token data: ", token_data);
+      fetch('/login', {
+        method: "POST",
+        body: token_data
+      }).then(response => {
+        console.log("Fetch response: ", response);
+        return response.arrayBuffer()
+      }).then(buffer => {
+       this.handle_message({data: buffer})
+      })
     } else {
       Cookies.remove(SESSION_TOKEN);
       console.log('No token found');
+      this.setState({is_loading: false})
     }
+  }
+
+  connect_to_ws = () => {
+    if (this.state.ws != null) {
+      this.state.ws.close(1000, "");
+    }
+    const ws = new Sockette(`ws://${location.host}/ws/`, {
+      timeout: 5e3,
+      maxAttempts: 10,
+      onopen: this.handle_on_open,
+      onmessage: this.handle_message,
+      onreconnect: e => console.log('Reconnecting...', e),
+      onmaximum: e => console.log('Stop Attempting!', e),
+      onclose: e => {console.log('Closed! ', e)},
+      onerror: e => {console.log('Error! ', e)},
+    });
+
+    this.setState({ws, is_loading: true});
+  }
+
+  handle_on_open = (e) => {
+    e.target.binaryType = 'arraybuffer';
+    this.connect_to_chat();
+    // const token = Cookies.get(SESSION_TOKEN);
+    // console.log(token);
+
+    // if (token) {
+    //   const token_data = this.props.protocolService.write_login_token(token);
+    //   console.log(token_data);
+    //   this.state.ws.send(token_data);
+    // } else {
+    //   Cookies.remove(SESSION_TOKEN);
+    //   console.log('No token found');
+    // }
   }
 
   handle_message = (e) => {
@@ -91,7 +134,9 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
         if (login_res) {
           Cookies.set(SESSION_TOKEN, login_res.token);
           this.setState({ user: login_res.user, is_authenticated: true });
+          this.connect_to_ws();
         } else if (!this.state.is_authenticated) {
+          this.setState({is_loading: false});
           Cookies.remove(SESSION_TOKEN);
           UIkit.notification(
             'An error occured when attempting to login',
@@ -108,7 +153,8 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
             );
             break;
           default:
-            this.setState({ is_authenticated: false });
+            this.state.ws.close(1000, "")
+            this.setState({ is_authenticated: false, ws: null, posts: [] });
         }
         break;
       case WsMessage.FetchPosts: {
@@ -204,6 +250,15 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
 
 
         break; }
+      case WsMessage.ConnectToChat:
+        if (!protocolService.read_connect_to_chat(data)) {
+          UIkit.notification(
+            'An error occured when attempting to connect to chat',
+            'warning',
+          );
+        }
+        this.setState({is_loading: false})
+        break;
       case WsMessage.Error:
       default:
     }
@@ -213,7 +268,15 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
     const creds_data = this.props.protocolService.write_login_creds(name, password);
 
     if (creds_data) {
-      this.state.ws.send(creds_data);
+      fetch('/login', {
+        method: "POST",
+        body: creds_data
+      }).then(response => {
+        console.log("Fetch response: ", response);
+        return response.arrayBuffer()
+      }).then(buffer => {
+       this.handle_message({data: buffer})
+      })
     }
   }
 
@@ -222,7 +285,15 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
     console.log(creds_data);
 
     if (creds_data) {
-      this.state.ws.send(creds_data);
+      fetch('/login', {
+        method: "POST",
+        body: creds_data
+      }).then(response => {
+        console.log("Fetch response: ", response);
+        return response.arrayBuffer()
+      }).then(buffer => {
+       this.handle_message({data: buffer})
+      })
     }
   }
 
@@ -269,6 +340,15 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
     }
   }
 
+  connect_to_chat = () => {
+    this.fetch_posts();
+    const token = Cookies.get(SESSION_TOKEN);
+    if (token) {
+      const token_data = this.props.protocolService.write_connect_to_chat(token);
+      this.state.ws.send(token_data);
+    }
+  }
+
   render() {
     const { is_loading, is_authenticated, user } = this.state;
     return (
@@ -277,18 +357,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
         : (
           <Router>
             <div>
-              <Route
-                exact
-                path="/"
-                render={props => (
-                  <Login
-                    {...props}
-                    loginRequest={this.handle_login_creds}
-                    registerRequest={this.handle_register}
-                    isAuth={is_authenticated}
-                  />
-                )}
-              />
               <Route path="/error" component={Error} />
               <PrivateRoute
                 path="/feed"
@@ -300,6 +368,17 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
                 voteRequest={this.vote_request}
                 logoutRequest={this.handle_logout}
                 user={user}
+              />
+              <Route
+                path="/index.html"
+                render={props => (
+                  <Login
+                    {...props}
+                    loginRequest={this.handle_login_creds}
+                    registerRequest={this.handle_register}
+                    isAuth={is_authenticated}
+                  />
+                )}
               />
             </div>
           </Router>
@@ -334,7 +413,7 @@ const PrivateRoute = ({
             user={user}
           />
         )
-        : <Redirect to="/" />
+        : <Redirect to="/index.html" />
     )}
   />
 );

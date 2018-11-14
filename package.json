@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build-wasm": "cargo build -p frontend --target wasm32-unknown-unknown --release",
     "build-bindgen": "wasm-bindgen target/wasm32-unknown-unknown/release/frontend.wasm --out-dir build",
-    "build": "npm run build-wasm && npm run build-bindgen && npm run build-opt && npx webpack",
+    "build": "NODE_ENV='production' npm run build-wasm && npm run build-bindgen && npm run build-opt && npx webpack",
     "build-wasm-debug": "cargo build -p frontend --target wasm32-unknown-unknown",
     "build-bindgen-debug": "wasm-bindgen target/wasm32-unknown-unknown/debug/frontend.wasm --out-dir build",
     "build-debug": "npm run build-wasm-debug && npm run build-bindgen-debug && npx webpack",

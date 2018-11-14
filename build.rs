@@ -38,6 +38,7 @@ fn prepare_style() -> Result<(), Error> {
             .arg("clone")
             .arg(format!("--branch={}", TAG))
             .arg("--recursive")
+            .arg("--depth=1")
             .arg(REPOSITORY)
             .arg(&target)
             .status()?;

@@ -27,12 +27,11 @@ extern "C" {
 
 #[wasm_bindgen]
 pub struct ProtocolInterface {
-    protocol_builder: ProtocolService
+    protocol_builder: ProtocolService,
 }
 
 #[wasm_bindgen]
 impl ProtocolInterface {
-    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         ProtocolInterface {
             protocol_builder: ProtocolService::new(),
@@ -40,32 +39,40 @@ impl ProtocolInterface {
     }
 
     pub fn response_type(&self, bytes: Box<[u8]>) -> WsMessage {
-        match ProtocolService::which_message(&bytes) {
+        let message_type = ProtocolService::which_message(&bytes);
+        //println!("decoding message type from wasm: {:?}", message_type);
+        match message_type {
             Ok(message) => message,
             Err(e) => {
-                log(&e.to_string());
+                //println!("{:?}", e);
                 WsMessage::Error
             }
         }
     }
-    
+
     pub fn read_login(&self, bytes: &[u8]) -> JsValue {
         if let Ok(res) = self.protocol_builder.read_response_login(bytes) {
-            JsValue::from_serde(&res.unwrap()).unwrap() 
-        } else { JsValue::null() }
+            JsValue::from_serde(&res.unwrap()).unwrap()
+        } else {
+            JsValue::null()
+        }
     }
 
     pub fn read_logout(&self, bytes: &[u8]) -> bool {
         if let Ok(Some(())) = self.protocol_builder.read_response_logout(bytes) {
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 
     pub fn read_fetch_posts(&self, bytes: &[u8]) -> JsValue {
         if let Ok(res) = self.protocol_builder.read_response_fetch_posts(bytes) {
             // returns an instance of FetchedPosts
             JsValue::from_serde(&res.unwrap()).unwrap()
-        } else { JsValue::null() }
+        } else {
+            JsValue::null()
+        }
     }
 
     pub fn read_create_post(&self, bytes: &[u8]) -> JsValue {
@@ -74,67 +81,107 @@ impl ProtocolInterface {
         if let Ok(res) = self.protocol_builder.read_response_create_post(bytes) {
             log(&format!("converting to jsvalue: {:?}", res));
             JsValue::from_serde(&res.unwrap()).unwrap()
-        } else { JsValue::null() }
+        } else {
+            JsValue::null()
+        }
     }
 
     pub fn read_user_vote(&self, bytes: &[u8]) -> Option<String> {
         if let Ok(res) = self.protocol_builder.read_request_user_vote(bytes) {
             res
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn read_new_post(&self, bytes: &[u8]) -> JsValue {
         if let Ok(res) = self.protocol_builder.read_update_new_post(bytes) {
+            log("Reading new post from protocol!");
             JsValue::from_serde(&res.unwrap()).unwrap()
-        } else { JsValue::null() }
+        } else {
+            JsValue::null()
+        }
     }
 
     pub fn read_invalid_posts(&self, bytes: &[u8]) -> Option<Box<[i32]>> {
         if let Ok(res) = self.protocol_builder.read_update_invalid(bytes) {
             res.map(|v| v.into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn read_update_users(&self, bytes: &[u8]) -> JsValue {
         if let Ok(res) = self.protocol_builder.read_update_users(bytes) {
             JsValue::from_serde(&res.unwrap()).unwrap()
-        } else { JsValue::null() }
+        } else {
+            JsValue::null()
+        }
+    }
+
+    pub fn read_connect_to_chat(&self, bytes: &[u8]) -> bool {
+        if let Ok(Some(())) = self.protocol_builder.read_response_connect_to_chat(bytes) {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn write_login_creds(&mut self, name: &str, password: &str) -> Option<Box<[u8]>> {
-        if let Ok(res) = self.protocol_builder.write_request_login_credentials(name, password) {
+        if let Ok(res) = self
+            .protocol_builder
+            .write_request_login_credentials(name, password)
+        {
             Some(res.to_vec().into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn write_login_token(&mut self, token: &str) -> Option<Box<[u8]>> {
         if let Ok(res) = self.protocol_builder.write_request_login_token(token) {
             Some(res.to_vec().into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn write_logout_token(&mut self, token: &str) -> Option<Box<[u8]>> {
         if let Ok(res) = self.protocol_builder.write_request_logout_token(token) {
             Some(res.to_vec().into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn write_registration(&mut self, name: &str, password: &str) -> Option<Box<[u8]>> {
-        if let Ok(res) = self.protocol_builder.write_request_registration(name, password) {
+        if let Ok(res) = self
+            .protocol_builder
+            .write_request_registration(name, password)
+        {
             Some(res.to_vec().into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn write_fetch_posts(&mut self, token: &str) -> Option<Box<[u8]>> {
         if let Ok(res) = self.protocol_builder.write_request_fetch_posts(token) {
             Some(res.to_vec().into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn write_create_post(&mut self, token: &str, content: &str) -> Option<Box<[u8]>> {
-        if let Ok(res) = self.protocol_builder.write_request_create_post(token, content) {
+        if let Ok(res) = self
+            .protocol_builder
+            .write_request_create_post(token, content)
+        {
             Some(res.to_vec().into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
     }
 
     pub fn write_user_vote(&mut self, token: &str, post_id: i32, vote: u32) -> Option<Box<[u8]>> {
@@ -144,37 +191,51 @@ impl ProtocolInterface {
             2 => Vote::Down,
             _ => return None,
         };
-        if let Ok(res) = self.protocol_builder.write_request_user_vote(token, post_id, vote) {
+        if let Ok(res) = self
+            .protocol_builder
+            .write_request_user_vote(token, post_id, vote)
+        {
             log("Succeeded converting vote");
             Some(res.to_vec().into_boxed_slice())
-        } else { None }
+        } else {
+            None
+        }
+    }
+
+    pub fn write_connect_to_chat(&mut self, token: &str) -> Option<Box<[u8]>> {
+        if let Ok(res) = self.protocol_builder.write_request_connect_to_chat(token) {
+            Some(res.to_vec().into_boxed_slice())
+        } else {
+            None
+        }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FetchedPosts {
     token: String,
-    posts: Vec<Post>
+    posts: Vec<Post>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreatedPost {
     token: String,
-    post: Post
+    post: Post,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct UsersToUpdate {
-    users: Vec<User>
+    users: Vec<User>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginResponse {
     token: String,
-    user: User
+    user: User,
 }
 
 #[wasm_bindgen]
+#[derive(Debug, PartialEq)]
 pub enum WsMessage {
     Login,
     Logout,
@@ -185,6 +246,7 @@ pub enum WsMessage {
     NewPost,
     UpdateUsers,
     Error,
+    ConnectToChat
 }
 
 #[derive(Serialize, Deserialize)]
@@ -243,13 +305,8 @@ mod tests {
         message::{Builder, HeapAllocator, ReaderOptions},
         serialize_packed,
     };
-    use protocol_capnp::{
-        post as Post_P, request, response, update, Vote as Vote_P
-    };
-    use {
-        Post, User, Vote, WsMessage, FetchedPosts, 
-        CreatedPost, UsersToUpdate, LoginResponse
-    };
+    use protocol_capnp::{post as Post_P, request, response, update, Vote as Vote_P};
+    use {CreatedPost, FetchedPosts, LoginResponse, Post, User, UsersToUpdate, Vote, WsMessage};
 
     use std::time::SystemTime;
 
@@ -272,7 +329,10 @@ mod tests {
         let _ = serialize_packed::write_message(&mut data, &b);
         let boxed_data = data.into_boxed_slice();
 
-        assert_eq!(WsMessage::NewPost, protocol_service.response_type(boxed_data));
+        assert_eq!(
+            WsMessage::NewPost,
+            protocol_service.response_type(boxed_data)
+        );
     }
 
     #[test]
@@ -294,7 +354,10 @@ mod tests {
         let _ = serialize_packed::write_message(&mut data, &b);
         let boxed_data = data.into_boxed_slice();
 
-        assert_eq!(WsMessage::InvalidPosts, protocol_service.response_type(boxed_data));
+        assert_eq!(
+            WsMessage::InvalidPosts,
+            protocol_service.response_type(boxed_data)
+        );
     }
 
     #[test]
@@ -320,7 +383,9 @@ mod tests {
         let _ = serialize_packed::write_message(&mut data, &b);
         let boxed_data = data.into_boxed_slice();
 
-        assert_eq!(WsMessage::CreatePost, protocol_service.response_type(boxed_data));
+        assert_eq!(
+            WsMessage::CreatePost,
+            protocol_service.response_type(boxed_data)
+        );
     }
 }
-

@@ -7,7 +7,7 @@ use capnp::{
 use protocol_capnp::{post as Post_P, request, response, update, Vote as Vote_P};
 
 use failure::Error;
-use {Post, User, Vote, WsMessage, FetchedPosts, CreatedPost, UsersToUpdate, LoginResponse};
+use {CreatedPost, FetchedPosts, LoginResponse, Post, User, UsersToUpdate, Vote, WsMessage};
 
 #[derive(Debug, Fail)]
 pub enum ProtocolError {
@@ -46,11 +46,12 @@ impl ProtocolService {
             response::FetchPosts(_) => WsMessage::FetchPosts,
             response::CreatePost(_) => WsMessage::CreatePost,
             response::UserVote(_) => WsMessage::UserVote,
+            response::ConnectToChat(_) => WsMessage::ConnectToChat,
             response::Update(data) => match data?.which()? {
                 update::Invalid(_) => WsMessage::InvalidPosts,
                 update::Users(_) => WsMessage::UpdateUsers,
                 update::NewPost(_) => WsMessage::NewPost,
-            }
+            },
         };
 
         Ok(res)
@@ -161,6 +162,18 @@ impl ProtocolService {
         self.write()
     }
 
+    // Should be called when authentication is successful
+    // Sends request to server to join websocket chat
+    pub fn write_request_connect_to_chat(&mut self, token: &str) -> Result<&[u8], Error> {
+        {
+            self.builder
+                .init_root::<request::Builder>()
+                .set_connect_to_chat(token);
+        }
+
+        self.write()
+    }
+
     pub fn read_response_login(&self, mut data: &[u8]) -> Result<Option<LoginResponse>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
@@ -177,7 +190,7 @@ impl ProtocolService {
                             username: user.get_username()?.to_string(),
                             karma: user.get_karma(),
                             streak: user.get_streak(),
-                        }
+                        },
                     };
                     Ok(Some(login_res))
                 }
@@ -237,10 +250,7 @@ impl ProtocolService {
         }
     }
 
-    pub fn read_response_create_post(
-        &self,
-        mut data: &[u8],
-    ) -> Result<Option<CreatedPost>, Error> {
+    pub fn read_response_create_post(&self, mut data: &[u8]) -> Result<Option<CreatedPost>, Error> {
         let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
         let response = reader.get_root::<response::Reader>()?;
 
@@ -257,7 +267,7 @@ impl ProtocolService {
                         vote: post.get_vote()?.into(),
                         userId: post.get_user_id(),
                     };
-                    
+
                     Ok(Some(CreatedPost { token, post }))
                 }
                 response::create_post::Error(error) => Err(Error::from(ProtocolError::Response {
@@ -300,9 +310,9 @@ impl ProtocolService {
                     };
 
                     Ok(Some(post))
-                },
-                _ => Ok(None)
-            }
+                }
+                _ => Ok(None),
+            },
             _ => Ok(None),
         }
     }
@@ -321,9 +331,9 @@ impl ProtocolService {
                     }
 
                     Ok(Some(v))
-                },
-                _ => Ok(None)
-            }
+                }
+                _ => Ok(None),
+            },
             _ => Ok(None),
         }
     }
@@ -346,9 +356,24 @@ impl ProtocolService {
                     }
 
                     Ok(Some(UsersToUpdate { users }))
-                },
-                _ => Ok(None)
-            }
+                }
+                _ => Ok(None),
+            },
+            _ => Ok(None),
+        }
+    }
+
+    pub fn read_response_connect_to_chat(&self, mut data: &[u8]) -> Result<Option<()>, Error> {
+        let reader = serialize_packed::read_message(&mut data, ReaderOptions::new())?;
+        let response = reader.get_root::<response::Reader>()?;
+
+        match response.which()? {
+            response::ConnectToChat(data) => match data.which()? {
+                response::connect_to_chat::Success(_) => Ok(Some(())),
+                response::connect_to_chat::Error(_) => Err(Error::from(ProtocolError::Response {
+                    description: "Connecting to chat was unsuccessful".to_string(),
+                })),
+            },
             _ => Ok(None),
         }
     }

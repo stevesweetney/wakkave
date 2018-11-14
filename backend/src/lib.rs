@@ -3,6 +3,9 @@ extern crate serde;
 extern crate wakkave;
 
 #[macro_use]
+extern crate diesel_migrations;
+
+#[macro_use]
 extern crate serde_derive;
 
 #[macro_use]
@@ -17,6 +20,7 @@ extern crate actix_web;
 
 #[macro_use]
 extern crate diesel;
+extern crate openssl;
 
 extern crate r2d2;
 
@@ -29,6 +33,7 @@ extern crate time;
 extern crate futures;
 
 extern crate bcrypt;
+extern crate bytes;
 
 pub mod chatserver;
 pub mod database;

@@ -35,7 +35,7 @@ export default class Feed extends React.Component<Props, State> {
   }
 
   componentDidMount() {
-    this.props.fetchPosts();
+    //this.props.fetchPosts();
   }
 
   render_row = ({ index, key, style }) => {
