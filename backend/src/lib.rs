@@ -1,8 +1,47 @@
+extern crate capnp;
+extern crate serde;
+extern crate wakkave;
+
+#[macro_use]
+extern crate diesel_migrations;
+
+#[macro_use]
+extern crate serde_derive;
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate failure;
+
+extern crate actix;
+
+extern crate actix_web;
+
+#[macro_use]
+extern crate diesel;
+extern crate openssl;
+
+extern crate r2d2;
+
+extern crate jsonwebtoken;
+
+extern crate uuid;
+
+extern crate time;
+
+extern crate futures;
+
+extern crate bcrypt;
+extern crate bytes;
+
 pub mod chatserver;
 pub mod database;
 pub mod server;
 pub mod token;
 pub mod websocket;
+
+pub use wakkave::protocol_capnp;
 
 use self::chatserver::ChatServer;
 use self::database::executor::DbExecutor;

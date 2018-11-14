@@ -10,7 +10,7 @@ use capnp::{
     serialize_packed, text,
 };
 
-use backend::{
+use {
     chatserver,
     database::executor::{
         CreatePost, CreateSession, CreateUser, DeleteSession, FetchPosts, FindUser, FindUserID,
@@ -59,7 +59,14 @@ impl Handler<chatserver::ServerMessage> for Ws {
     type Result = ();
 
     fn handle(&mut self, msg: chatserver::ServerMessage, ctx: &mut Self::Context) {
-        ctx.binary(msg.0);
+        if let Some(ref id) = msg.1 {
+            if id != self.id.as_ref().unwrap() {
+                ctx.binary(msg.0);
+            }
+        } else {
+            println!("Sending binary message through websocket from server");
+            ctx.binary(msg.0);
+        }
     }
 }
 
@@ -107,6 +114,7 @@ impl Ws {
                                 .init_root::<response::Builder>()
                                 .init_login()
                                 .set_error(&e.to_string());
+                            let _ = self.write();
                             println!("Error: {:?}", e);
                         }
                     }
@@ -192,7 +200,19 @@ impl Ws {
                             .init_user_vote()
                             .set_error(&e.to_string());
                         let _ = self.write();
+                        println!("Error: {:?}", e);
                     }
+                }
+
+                self.send(ctx);
+            }
+            Ok(request::ConnectToChat(data)) => {
+                if let Err(e) = self.handle_request_connect_to_chat(data, ctx) {
+                    self.builder
+                        .init_root::<response::Builder>()
+                        .init_connect_to_chat()
+                        .set_error(());
+                    let _ = self.write();
                 }
 
                 self.send(ctx);
@@ -427,6 +447,11 @@ impl Ws {
             .send(CreatePost { user_id, content })
             .wait()??;
 
+        ctx.state().db.do_send(UpdateSession {
+            old_id: token.to_string(),
+            new_id: new_token.clone(),
+        });
+
         {
             let mut success = self
                 .builder
@@ -465,15 +490,17 @@ impl Ws {
         let (new_token, user_id) = Token::verify(token)?;
         let up_or_down = match vote {
             Vote::Up => 1,
-            Vote::Down => 0,
+            Vote::Down => -1,
             Vote::None => return Err(super::ServerError::InvalidVote.into()),
         };
 
-        let _ = ctx.state().db.send(UserVote {
-            post_id,
-            user_id,
-            up_or_down,
-        });
+        ctx.state()
+            .db
+            .send(UserVote {
+                post_id,
+                user_id,
+                up_or_down,
+            }).wait()??;
 
         {
             self.builder
@@ -484,4 +511,21 @@ impl Ws {
 
         self.write()
     }
+
+    fn handle_request_connect_to_chat(
+        &mut self,
+        data: Result<text::Reader, capnp::Error>,
+        ctx: &mut WebsocketContext<Self, State>,
+    ) -> Result<(), Error> {
+        let token = data?;
+        self.connect_to_chat(ctx);
+
+        self.builder
+            .init_root::<response::Builder>()
+            .init_connect_to_chat()
+            .set_success(());
+        self.write()
+    }
+
+    
 }

@@ -2,3 +2,16 @@
 **/*.rs.bk
 .env
 static/css/style.css
+node_modules/
+static/*.js
+static/*.wasm
+build/
+frontend/src/yew_components
+.dockerignore
+Dockerfile
+Dockerfile.short
+aws-compose.yml
+cred_input.yml
+docker-compose.yml
+ecs-params.yml
+ecs-registry-creds_20181112T203613Z.yml

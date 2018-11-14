@@ -38,6 +38,7 @@ fn prepare_style() -> Result<(), Error> {
             .arg("clone")
             .arg(format!("--branch={}", TAG))
             .arg("--recursive")
+            .arg("--depth=1")
             .arg(REPOSITORY)
             .arg(&target)
             .status()?;
@@ -49,7 +50,7 @@ fn prepare_style() -> Result<(), Error> {
     // Copy the scss file into the output directory
     target.pop();
     target.push(SCSS_FILE);
-    copy(format!("src/frontend/{}", SCSS_FILE), &target)?;
+    copy(format!("frontend/src/{}", SCSS_FILE), &target)?;
 
     // Build the file
     let mut options = Options::default();

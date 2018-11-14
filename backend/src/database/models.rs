@@ -14,7 +14,7 @@ pub struct NewUser {
     pub password: String,
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Debug)]
 pub struct User {
     pub id: i32,
     pub username: String,
@@ -30,7 +30,7 @@ pub struct NewPost {
     pub user_id: i32,
 }
 
-#[derive(Queryable, Identifiable)]
+#[derive(Queryable, Identifiable, Debug)]
 pub struct Post {
     pub id: i32,
     pub content: String,
@@ -39,12 +39,12 @@ pub struct Post {
     pub user_id: i32,
 }
 
-#[derive(Queryable, Insertable, Identifiable, Associations)]
+#[derive(Queryable, Insertable, Identifiable, Associations, Debug)]
 #[primary_key(user_id, post_id)]
 #[belongs_to(Post)]
 #[table_name = "votes"]
 pub struct Vote {
-    pub post_id: i32,
     pub user_id: i32,
+    pub post_id: i32,
     pub up_or_down: i16,
 }

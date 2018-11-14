@@ -12,7 +12,7 @@ use failure::Error;
 use std::cmp::Ordering;
 
 use super::models::{NewPost, NewUser, Post, Session, User, Vote};
-use backend::ServerError;
+use ServerError;
 
 pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);
 
@@ -220,27 +220,26 @@ impl Handler<FetchPosts> for DbExecutor {
             posts.filter(valid.eq(true)).load::<Post>(&conn)?
         };
 
-        let votes_lists: Vec<Vec<Vote>> = {
+        // let votes_lists: Vec<Vec<Vote>> = {
+        //     use super::schema::votes::dsl::*;
+        //     Vote::belonging_to(&posts_lists)
+        //         .filter(user_id.eq(msg.user_id))
+        //         .load::<Vote>(&conn)?
+        //         .grouped_by(&posts_lists)
+        // };
+        {
             use super::schema::votes::dsl::*;
-            Vote::belonging_to(&posts_lists)
-                .filter(user_id.eq(msg.user_id))
-                .load::<Vote>(&conn)?
-                .grouped_by(&posts_lists)
-        };
-
-        Ok(posts_lists
-            .into_iter()
-            .zip(votes_lists)
-            .map(|(post, mut votes)| {
-                let v = {
-                    if votes.len() >= 1 {
-                        Some(votes.swap_remove(0))
-                    } else {
-                        None
-                    }
-                };
-                (post, v)
-            }).collect::<Vec<_>>())
+            Ok(posts_lists
+                .into_iter()
+                .map(|post| {
+                    let res = votes
+                        .filter(user_id.eq(msg.user_id))
+                        .filter(post_id.eq(post.id))
+                        .first::<Vote>(&conn)
+                        .optional();
+                    (post, res.unwrap_or(None))
+                }).collect::<Vec<_>>())
+        }
     }
 }
 
@@ -288,9 +287,12 @@ impl Handler<UpdateKarma> for DbExecutor {
 
         let invalid_posts: Vec<Post> = {
             use super::schema::posts::dsl::*;
-            diesel::update(posts.filter(created_at.lt(now - 61_i32.minutes())))
-                .set(valid.eq(false))
-                .get_results::<Post>(&conn)?
+            diesel::update(
+                posts
+                    .filter(created_at.lt(now - 61_i32.minutes()))
+                    .filter(valid.eq(true))
+            ).set(valid.eq(false))
+            .get_results::<Post>(&conn)?
         };
 
         let mut users_to_update: Vec<User> = Vec::new();
@@ -302,8 +304,7 @@ impl Handler<UpdateKarma> for DbExecutor {
             let (up_v, down_v): (Vec<Vote>, Vec<Vote>) =
                 group.into_iter().partition(|v| v.up_or_down == 1);
 
-            let result = up_v.len() - down_v.len();
-            let groups: Option<(Vec<Vote>, Vec<Vote>)> = match result.cmp(&0) {
+            let groups: Option<(Vec<Vote>, Vec<Vote>)> = match up_v.len().cmp(&down_v.len()) {
                 Ordering::Greater => Some((up_v, down_v)),
                 Ordering::Less => Some((down_v, up_v)),
                 Ordering::Equal => None,
