@@ -246,7 +246,7 @@ pub enum WsMessage {
     NewPost,
     UpdateUsers,
     Error,
-    ConnectToChat
+    ConnectToChat,
 }
 
 #[derive(Serialize, Deserialize)]

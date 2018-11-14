@@ -10,8 +10,8 @@ use super::{
 };
 use actix::{prelude::*, SystemRunner};
 use actix_web::{
-    http, error, fs::StaticFiles, server, ws, App, AsyncResponder, Error, FutureResponse, HttpMessage,
-    HttpRequest, HttpResponse, Responder,
+    error, fs::StaticFiles, http, server, ws, App, AsyncResponder, Error, FutureResponse,
+    HttpMessage, HttpRequest, HttpResponse, Responder,
 };
 use bytes::Bytes;
 use capnp::{

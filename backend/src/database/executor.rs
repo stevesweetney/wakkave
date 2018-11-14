@@ -290,7 +290,7 @@ impl Handler<UpdateKarma> for DbExecutor {
             diesel::update(
                 posts
                     .filter(created_at.lt(now - 61_i32.minutes()))
-                    .filter(valid.eq(true))
+                    .filter(valid.eq(true)),
             ).set(valid.eq(false))
             .get_results::<Post>(&conn)?
         };

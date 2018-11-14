@@ -526,6 +526,4 @@ impl Ws {
             .set_success(());
         self.write()
     }
-
-    
 }
