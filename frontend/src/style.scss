@@ -1,12 +1,33 @@
 // Custom variables and variable overwrites
-// $global-link-color: #DA7D02;
+$global-emphasis-color: #aaff9b;
+$subnav-item-color :#6f7d71;
+$global-color: #fff;
+$global-muted-color: #282828;
+$global-background: #000c38;
 
 // Default variables and available mixins
 @import "uikit/src/scss/variables-theme.scss";
 @import "uikit/src/scss/mixins-theme.scss";
 
-// Custom mixin overwrites.
-// @mixin hook-card() { color: #000; }
-
 // Import UIkit
 @import "uikit/src/scss/uikit-theme.scss";
+
+// Custom mixin overwrites.
+
+.feed-content {
+    height: 100vh;
+}
+
+.feed-message-input {
+    background-color: $global-background;
+    color: $global-color;
+}
+
+.center-content {
+    flex:1 1 auto;
+}
+
+.edge-content {
+    flex:0 0 auto; 
+}
+

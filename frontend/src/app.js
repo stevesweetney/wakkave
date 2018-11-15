@@ -9,11 +9,11 @@ import {
 } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import Sockette from 'sockette';
+import { throws } from 'assert';
 import Login from './components/login';
 import Feed from './components/feed';
 
 import { ProtocolInterface, WsMessage, Vote } from '../../build/frontend';
-import { throws } from 'assert';
 
 const SESSION_TOKEN: string = 'SessionToken';
 
@@ -70,26 +70,26 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
 
     if (token) {
       const token_data = this.props.protocolService.write_login_token(token);
-      console.log("Logging token data: ", token_data);
+      console.log('Logging token data: ', token_data);
       fetch('/login', {
-        method: "POST",
-        body: token_data
-      }).then(response => {
-        console.log("Fetch response: ", response);
-        return response.arrayBuffer()
-      }).then(buffer => {
-       this.handle_message({data: buffer})
-      })
+        method: 'POST',
+        body: token_data,
+      }).then((response) => {
+        console.log('Fetch response: ', response);
+        return response.arrayBuffer();
+      }).then((buffer) => {
+        this.handle_message({ data: buffer });
+      });
     } else {
       Cookies.remove(SESSION_TOKEN);
       console.log('No token found');
-      this.setState({is_loading: false})
+      this.setState({ is_loading: false });
     }
   }
 
   connect_to_ws = () => {
     if (this.state.ws != null) {
-      this.state.ws.close(1000, "");
+      this.state.ws.close(1000, '');
     }
     const ws = new Sockette(`ws://${location.host}/ws/`, {
       timeout: 5e3,
@@ -98,11 +98,11 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       onmessage: this.handle_message,
       onreconnect: e => console.log('Reconnecting...', e),
       onmaximum: e => console.log('Stop Attempting!', e),
-      onclose: e => {console.log('Closed! ', e)},
-      onerror: e => {console.log('Error! ', e)},
+      onclose: (e) => { console.log('Closed! ', e); },
+      onerror: (e) => { console.log('Error! ', e); },
     });
 
-    this.setState({ws, is_loading: true});
+    this.setState({ ws, is_loading: true });
   }
 
   handle_on_open = (e) => {
@@ -136,11 +136,10 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
           this.setState({ user: login_res.user, is_authenticated: true });
           this.connect_to_ws();
         } else if (!this.state.is_authenticated) {
-          this.setState({is_loading: false});
+          this.setState({ is_loading: false });
           Cookies.remove(SESSION_TOKEN);
           UIkit.notification(
             'An error occured when attempting to login',
-            'warning',
           );
         }
         break; }
@@ -153,7 +152,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
             );
             break;
           default:
-            this.state.ws.close(1000, "")
+            this.state.ws.close(1000, '');
             this.setState({ is_authenticated: false, ws: null, posts: [] });
         }
         break;
@@ -257,7 +256,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
             'warning',
           );
         }
-        this.setState({is_loading: false})
+        this.setState({ is_loading: false });
         break;
       case WsMessage.Error:
       default:
@@ -269,14 +268,14 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
 
     if (creds_data) {
       fetch('/login', {
-        method: "POST",
-        body: creds_data
-      }).then(response => {
-        console.log("Fetch response: ", response);
-        return response.arrayBuffer()
-      }).then(buffer => {
-       this.handle_message({data: buffer})
-      })
+        method: 'POST',
+        body: creds_data,
+      }).then((response) => {
+        console.log('Fetch response: ', response);
+        return response.arrayBuffer();
+      }).then((buffer) => {
+        this.handle_message({ data: buffer });
+      });
     }
   }
 
@@ -286,14 +285,14 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
 
     if (creds_data) {
       fetch('/login', {
-        method: "POST",
-        body: creds_data
-      }).then(response => {
-        console.log("Fetch response: ", response);
-        return response.arrayBuffer()
-      }).then(buffer => {
-       this.handle_message({data: buffer})
-      })
+        method: 'POST',
+        body: creds_data,
+      }).then((response) => {
+        console.log('Fetch response: ', response);
+        return response.arrayBuffer();
+      }).then((buffer) => {
+        this.handle_message({ data: buffer });
+      });
     }
   }
 

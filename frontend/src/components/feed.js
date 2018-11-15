@@ -35,7 +35,7 @@ export default class Feed extends React.Component<Props, State> {
   }
 
   componentDidMount() {
-    //this.props.fetchPosts();
+    // this.props.fetchPosts();
   }
 
   render_row = ({ index, key, style }) => {
@@ -69,8 +69,10 @@ export default class Feed extends React.Component<Props, State> {
     </AutoSizer>
   )
 
-    update_username = (event: SyntheticInputEvent<>) => {
-      this.setState({ message: event.target.value });
+    handle_message_change = (event: SyntheticInputEvent<>) => {
+      var text = event.target.value;
+      if (text.length > 140) { return ;}
+      this.setState({ message: text });
     }
 
     create_post_request = (e: SyntheticEvent<HTMLButtonElement>) => {
@@ -82,21 +84,22 @@ export default class Feed extends React.Component<Props, State> {
 
     render_form = () => (
       <form>
-        <div className="uk-flex uk-flex-middle uk-flex-column">
-          <div className="uk-margin">
+        <div className="uk-flex uk-flex-middle uk-flex-row">
+          <div className="uk-margin" style={{ position: 'relative', width: '80%' }}>
             <textarea
-              className="uk-textarea uk-form-width-medium"
+              className="uk-textarea feed-message-input"
               rows="5"
               placeholder="Enter a message"
               value={this.state.message}
-              onChange={this.update_username}
+              onChange={this.handle_message_change}
             />
-          </div>
-          <div className="uk-margin">
             <button
               className="uk-button uk-button-default"
               onClick={this.create_post_request}
               type="button"
+              style={{
+                position: 'absolute', float: 'right', top: 0, height: '100%',
+              }}
             >
               {'Send!'}
             </button>
@@ -107,24 +110,39 @@ export default class Feed extends React.Component<Props, State> {
 
     render() {
       return (
-        <div className="uk-container">
-          <button
-            className="uk-button uk-button-default uk-position-top-right"
-            onClick={this.props.logoutRequest}
-            type="button"
-          >
-                Logout
-          </button>
-          <p>
-            {`Karma: ${this.props.user.karma}!`}
-          </p>
-          <p>
-            {`Welcome ${this.props.user.username}!`}
-          </p>
-          <div className="uk-flex uk-flex-column" style={{ height: '400px' }}>
-            <div className="uk-flex-1">
-              {this.render_posts()}
+        <div className="uk-container uk-flex uk-flex-column feed-content">
+          <a href="#help-modal" uk-toggle="target: #help-modal" className="uk-position-bottom-left" uk-icon="info" />
+          <div id="help-modal" uk-modal="true">
+            <div className="uk-modal-dialog uk-modal-body">
+              <h2 className="uk-modal-title">Help</h2>
+              <p>
+                  In Wakkave, your messages will expire after 1 hour. While they are still alive
+                  you can vote to decide which way the majority will go.
+                  If you guess correctly you'll gain points, if not you'll lose points.
+                  Have fun!
+              </p>
+              <button className="uk-modal-close-default" type="button" uk-close="true" />
             </div>
+          </div>
+          <div className="edge-content uk-flex uk-flex-row uk-flex-between">
+            <div className="uk-text-large" uk-tooltip="title: Karma; pos: right">
+              {`Karma: ${this.props.user.karma}!`}
+            </div>
+            <div className="uk-text-large">
+              {`${this.props.user.username}`}
+            </div>
+            <button
+              className="uk-button uk-button-default"
+              onClick={this.props.logoutRequest}
+              type="button"
+            >
+                  Logout
+            </button>
+          </div>
+          <div className="center-content">
+            {this.render_posts()}
+          </div>
+          <div className="edge-content">
             {this.render_form()}
           </div>
         </div>

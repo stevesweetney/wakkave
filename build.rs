@@ -12,12 +12,13 @@ use std::{
 };
 
 const REPOSITORY: &str = "https://github.com/uikit/uikit.git";
-const TAG: &str = "v3.0.0-rc.11";
+const TAG: &str = "v3.0.0-rc.22";
 const CSS_FILE: &str = "style.css";
 const SCSS_FILE: &str = "style.scss";
 const CAPNP_FILE: &str = "protocol.capnp";
 
 fn main() -> Result<(), Error> {
+    println!("cargo:rerun-if-changed=frontend/src/style.scss");
     ::capnpc::CompilerCommand::new()
         .file(PathBuf::from("src").join(CAPNP_FILE))
         .run()

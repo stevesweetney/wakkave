@@ -99,7 +99,7 @@ export default class Login extends React.Component<Props, State> {
               <div className="uk-margin">
                 <input
                   className="uk-input"
-                  type="text"
+                  type="password"
                   name="password"
                   placeholder="Password"
                   value={this.state.password}
@@ -132,7 +132,7 @@ export default class Login extends React.Component<Props, State> {
               <div className="uk-margin">
                 <input
                   className="uk-input"
-                  type="text"
+                  type="password"
                   name="password"
                   placeholder="Password"
                   value={this.state.reg_password}
@@ -142,7 +142,7 @@ export default class Login extends React.Component<Props, State> {
               <div className="uk-margin">
                 <input
                   className="uk-input"
-                  type="text"
+                  type="password"
                   name="password"
                   placeholder="Confirm password"
                   value={this.state.reg_password_confirm}
@@ -167,6 +167,7 @@ export default class Login extends React.Component<Props, State> {
     render() {
       return (
         <div className="uk-position-center">
+          <img data-src="wakkave-splash.png" width="250" height="250" uk-img=""></img>
           {this.render_tabs()}
           {this.render_forms()}
         </div>
