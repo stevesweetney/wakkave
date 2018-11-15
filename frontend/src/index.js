@@ -1,2 +1,4 @@
 import('./app.js')
-  .catch(e => console.error('Error importing `app.js`:', e));
+  .catch(e => {
+    return import('./wasm_error.js')
+  });
