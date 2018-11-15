@@ -167,7 +167,7 @@ export default class Login extends React.Component<Props, State> {
     render() {
       return (
         <div className="uk-position-center">
-          <img data-src="wakkave-splash.png" width="250" height="250" uk-img=""></img>
+          <img data-src="wakkave-splash.png" width="250" height="250" uk-img="" />
           {this.render_tabs()}
           {this.render_forms()}
         </div>

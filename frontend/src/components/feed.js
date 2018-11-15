@@ -70,8 +70,8 @@ export default class Feed extends React.Component<Props, State> {
   )
 
     handle_message_change = (event: SyntheticInputEvent<>) => {
-      var text = event.target.value;
-      if (text.length > 140) { return ;}
+      const text = event.target.value;
+      if (text.length > 140) { return; }
       this.setState({ message: text });
     }
 

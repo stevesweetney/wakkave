@@ -1,4 +1,2 @@
 import('./app.js')
-  .catch(e => {
-    return import('./wasm_error.js')
-  });
+  .catch(e => import('./wasm_error.js'));
