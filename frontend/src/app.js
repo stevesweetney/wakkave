@@ -61,9 +61,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       fetch('/login', {
         method: 'POST',
         body: token_data,
-      }).then((response) => {
-        return response.arrayBuffer();
-      }).then((buffer) => {
+      }).then(response => response.arrayBuffer()).then((buffer) => {
         this.handle_message({ data: buffer });
       });
     } else {
@@ -81,8 +79,8 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       maxAttempts: 10,
       onopen: this.handle_on_open,
       onmessage: this.handle_message,
-      onreconnect: e => {},
-      onmaximum: e => {},
+      onreconnect: (e) => {},
+      onmaximum: (e) => {},
       onclose: (e) => {},
       onerror: (e) => {},
     });
@@ -99,7 +97,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
     const data = new Uint8Array(e.data);
     const { protocolService } = this.props;
     const message_type = protocolService.response_type(data);
-  
+
     switch (message_type) {
       case WsMessage.Login: {
         const login_res = protocolService.read_login(data);
@@ -117,16 +115,13 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
         }
         break; }
       case WsMessage.Logout:
-        switch (protocolService.read_logout(data)) {
-          case false:
-            UIkit.notification(
-              'An error occured when attempting to logout',
-              'warning',
-            );
-            break;
-          default:
-            this.state.ws.close(1000, '');
-            this.setState({ is_authenticated: false, ws: null, posts: [] });
+        if (!protocolService.read_logout(data)) {
+          UIkit.notification(
+            'An error occured when attempting to logout',
+          );
+        } else {
+          this.state.ws.close(1000, '');
+          this.setState({ is_authenticated: false, ws: null, posts: [] });
         }
         break;
       case WsMessage.FetchPosts: {
@@ -186,7 +181,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       case WsMessage.NewPost: {
         const new_post = protocolService.read_new_post(data);
         if (new_post) {
-
           this.setState(prevState => ({
             posts: [...prevState.posts, new_post],
           }));
@@ -195,7 +189,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       case WsMessage.UpdateUsers: {
         const updated_users = protocolService.read_update_users(data);
         if (updated_users) {
-
           this.setState((prevState) => {
             const { user } = prevState;
             const user_update = updated_users.users.find(u => u.id === user.id);
@@ -237,9 +230,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       fetch('/login', {
         method: 'POST',
         body: creds_data,
-      }).then((response) => {
-        return response.arrayBuffer();
-      }).then((buffer) => {
+      }).then(response => response.arrayBuffer()).then((buffer) => {
         this.handle_message({ data: buffer });
       });
     }
@@ -252,9 +243,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       fetch('/login', {
         method: 'POST',
         body: creds_data,
-      }).then((response) => {
-        return response.arrayBuffer();
-      }).then((buffer) => {
+      }).then(response => response.arrayBuffer()).then((buffer) => {
         this.handle_message({ data: buffer });
       });
     }
