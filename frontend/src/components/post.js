@@ -38,7 +38,6 @@ export default class UserPost extends React.Component<Props, State> {
       if (this.state.vote !== vote) {
         this.props.onVote(this.props.id, vote);
         this.setState({ vote });
-        console.debug('Debugging vote', vote);
       }
     }
 

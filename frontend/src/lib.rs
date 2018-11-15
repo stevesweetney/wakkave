@@ -19,11 +19,11 @@ use protocol_capnp::{post as Post_P, Vote as Vote_P};
 pub mod protocol;
 use protocol::ProtocolService;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-}
+// #[wasm_bindgen]
+// extern "C" {
+//     #[wasm_bindgen(js_namespace = console)]
+//     fn log(s: &str);
+// }
 
 #[wasm_bindgen]
 pub struct ProtocolInterface {
@@ -77,9 +77,7 @@ impl ProtocolInterface {
 
     pub fn read_create_post(&self, bytes: &[u8]) -> JsValue {
         // returns an instance of CreatedPost
-        log("creating a new post through wasm...");
         if let Ok(res) = self.protocol_builder.read_response_create_post(bytes) {
-            log(&format!("converting to jsvalue: {:?}", res));
             JsValue::from_serde(&res.unwrap()).unwrap()
         } else {
             JsValue::null()
@@ -96,7 +94,6 @@ impl ProtocolInterface {
 
     pub fn read_new_post(&self, bytes: &[u8]) -> JsValue {
         if let Ok(res) = self.protocol_builder.read_update_new_post(bytes) {
-            log("Reading new post from protocol!");
             JsValue::from_serde(&res.unwrap()).unwrap()
         } else {
             JsValue::null()
@@ -185,7 +182,6 @@ impl ProtocolInterface {
     }
 
     pub fn write_user_vote(&mut self, token: &str, post_id: i32, vote: u32) -> Option<Box<[u8]>> {
-        log("Converting to user vote through wasm");
         let vote = match vote {
             0 => Vote::Up,
             2 => Vote::Down,
@@ -195,7 +191,6 @@ impl ProtocolInterface {
             .protocol_builder
             .write_request_user_vote(token, post_id, vote)
         {
-            log("Succeeded converting vote");
             Some(res.to_vec().into_boxed_slice())
         } else {
             None

@@ -38,17 +38,6 @@ type State = {
 class App extends React.Component<{protocolService: ProtocolInterface}, State> {
   constructor(props) {
     super(props);
-    // const ws = new Sockette('ws://127.0.0.1:80/login', {
-    //   timeout: 5e3,
-    //   maxAttempts: 10,
-    //   onopen: this.handle_on_open,
-    //   onmessage: this.handle_message,
-    //   onreconnect: e => console.log('Reconnecting...', e),
-    //   onmaximum: e => console.log('Stop Attempting!', e),
-    //   onclose: e => console.log('Closed!', e),
-    //   onerror: e => console.log('Error:', e),
-    // });
-
     this.state = {
       ws: null,
       is_authenticated: false,
@@ -66,23 +55,19 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
 
   componentDidMount() {
     const token = Cookies.get(SESSION_TOKEN);
-    console.log(token);
 
     if (token) {
       const token_data = this.props.protocolService.write_login_token(token);
-      console.log('Logging token data: ', token_data);
       fetch('/login', {
         method: 'POST',
         body: token_data,
       }).then((response) => {
-        console.log('Fetch response: ', response);
         return response.arrayBuffer();
       }).then((buffer) => {
         this.handle_message({ data: buffer });
       });
     } else {
       Cookies.remove(SESSION_TOKEN);
-      console.log('No token found');
       this.setState({ is_loading: false });
     }
   }
@@ -96,10 +81,10 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       maxAttempts: 10,
       onopen: this.handle_on_open,
       onmessage: this.handle_message,
-      onreconnect: e => console.log('Reconnecting...', e),
-      onmaximum: e => console.log('Stop Attempting!', e),
-      onclose: (e) => { console.log('Closed! ', e); },
-      onerror: (e) => { console.log('Error! ', e); },
+      onreconnect: e => {},
+      onmaximum: e => {},
+      onclose: (e) => {},
+      onerror: (e) => {},
     });
 
     this.setState({ ws, is_loading: true });
@@ -108,25 +93,13 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
   handle_on_open = (e) => {
     e.target.binaryType = 'arraybuffer';
     this.connect_to_chat();
-    // const token = Cookies.get(SESSION_TOKEN);
-    // console.log(token);
-
-    // if (token) {
-    //   const token_data = this.props.protocolService.write_login_token(token);
-    //   console.log(token_data);
-    //   this.state.ws.send(token_data);
-    // } else {
-    //   Cookies.remove(SESSION_TOKEN);
-    //   console.log('No token found');
-    // }
   }
 
   handle_message = (e) => {
     const data = new Uint8Array(e.data);
     const { protocolService } = this.props;
     const message_type = protocolService.response_type(data);
-    console.log('recieving message from ws: ', message_type);
-
+  
     switch (message_type) {
       case WsMessage.Login: {
         const login_res = protocolService.read_login(data);
@@ -160,7 +133,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
         const fetch_res = protocolService.read_fetch_posts(data);
 
         if (fetch_res) {
-          console.debug('Posts: ', fetch_res.posts);
           Cookies.set(SESSION_TOKEN, fetch_res.token);
           this.setState({ posts: fetch_res.posts });
         } else {
@@ -175,7 +147,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
 
         if (post_res) {
           Cookies.set(SESSION_TOKEN, post_res.token);
-          console.log('Adding a new post', post_res.post);
           this.setState(prevState => ({
             posts: [...prevState.posts, post_res.post],
           }));
@@ -199,7 +170,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
         const invalid_post_ids = protocolService.read_invalid_posts(data);
 
         if (invalid_post_ids) {
-          console.log("Recieved invalid ID's");
           this.setState((prevState) => {
             const { posts } = prevState;
             const updated_posts = [];
@@ -215,9 +185,7 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
         break; }
       case WsMessage.NewPost: {
         const new_post = protocolService.read_new_post(data);
-        console.log('Recieving a new post...');
         if (new_post) {
-          console.log('Recieved a new post: ', new_post);
 
           this.setState(prevState => ({
             posts: [...prevState.posts, new_post],
@@ -227,7 +195,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
       case WsMessage.UpdateUsers: {
         const updated_users = protocolService.read_update_users(data);
         if (updated_users) {
-          console.log('Recieving updated users: ', updated_users);
 
           this.setState((prevState) => {
             const { user } = prevState;
@@ -271,7 +238,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
         method: 'POST',
         body: creds_data,
       }).then((response) => {
-        console.log('Fetch response: ', response);
         return response.arrayBuffer();
       }).then((buffer) => {
         this.handle_message({ data: buffer });
@@ -281,14 +247,12 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
 
   handle_register = (name: string, password: string) => {
     const creds_data = this.props.protocolService.write_registration(name, password);
-    console.log(creds_data);
 
     if (creds_data) {
       fetch('/login', {
         method: 'POST',
         body: creds_data,
       }).then((response) => {
-        console.log('Fetch response: ', response);
         return response.arrayBuffer();
       }).then((buffer) => {
         this.handle_message({ data: buffer });
@@ -299,10 +263,8 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
   handle_logout = () => {
     const token = Cookies.get(SESSION_TOKEN);
     if (token) {
-      console.log('Logout request to server');
       const data = this.props.protocolService.write_logout_token(token);
       if (data) {
-        console.log('logout message converted to binary: ', data);
         this.state.ws.send(data);
       }
     }
@@ -311,10 +273,8 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
   create_post_request = (message: string) => {
     const token = Cookies.get(SESSION_TOKEN);
     if (token) {
-      console.log('Sending message to server: ', message);
       const data = this.props.protocolService.write_create_post(token, message);
       if (data) {
-        console.log('message converted to binary: ', data);
         this.state.ws.send(data);
       }
     }
@@ -323,7 +283,6 @@ class App extends React.Component<{protocolService: ProtocolInterface}, State> {
   vote_request = (id: number, vote: Vote) => {
     const token = Cookies.get(SESSION_TOKEN);
     if (token) {
-      console.log('Sending vote to server: ', vote);
       const data = this.props.protocolService.write_user_vote(token, id, vote);
       if (data) {
         this.state.ws.send(data);
